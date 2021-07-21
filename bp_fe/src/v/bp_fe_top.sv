@@ -60,14 +60,9 @@ module bp_fe_top
   `declare_bp_core_if(vaddr_width_p, paddr_width_p, asid_width_p, branch_metadata_fwd_width_p);
   `declare_bp_cfg_bus_s(hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p);
   `declare_bp_fe_branch_metadata_fwd_s(btb_tag_width_p, btb_idx_width_p, bht_idx_width_p, ghist_width_p, bht_row_width_p);
-  bp_fe_cmd_s fe_cmd_cast_i;
-  assign fe_cmd_cast_i = fe_cmd_i;
-
-  bp_fe_queue_s fe_queue_cast_o;
-  assign fe_queue_o = fe_queue_cast_o;
-
-  bp_cfg_bus_s cfg_bus_cast_i;
-  assign cfg_bus_cast_i = cfg_bus_i;
+  `bp_cast_i(bp_cfg_bus_s, cfg_bus);
+  `bp_cast_i(bp_fe_cmd_s, fe_cmd);
+  `bp_cast_o(bp_fe_queue_s, fe_queue);
 
   // FSM
   enum logic [1:0] {e_wait=2'd0, e_run, e_stall} state_n, state_r;
@@ -270,7 +265,7 @@ module bp_fe_top
   wire icache_v_li = next_pc_yumi_li | icache_fence_v;
   logic [instr_width_gp-1:0] icache_data_lo;
   logic icache_ready_lo, icache_data_v_lo, icache_miss_v_lo;
-  logic icache_poison_tl, icache_poison_tv;
+  logic icache_poison_tl;
   bp_fe_icache
    #(.bp_params_p(bp_params_p))
    icache
@@ -293,7 +288,6 @@ module bp_fe_top
      ,.data_o(icache_data_lo)
      ,.data_v_o(icache_data_v_lo)
      ,.miss_v_o(icache_miss_v_lo)
-     ,.poison_tv_i(icache_poison_tv)
 
      ,.cache_req_o(cache_req_o)
      ,.cache_req_v_o(cache_req_v_o)
@@ -354,7 +348,6 @@ module bp_fe_top
   assign fe_queue_v_o = fe_queue_ready_i & (fe_instr_v | fe_exception_v) & ~cmd_nonattaboy_v;
 
   assign icache_poison_tl = ovr_lo | fe_exception_v | queue_miss | cmd_nonattaboy_v;
-  assign icache_poison_tv = fe_exception_v | cmd_nonattaboy_v;
 
   assign fe_cmd_yumi_o = pc_gen_init_done_lo & (cmd_nonattaboy_v | attaboy_yumi_lo);
   assign next_pc_yumi_li = (state_n == e_run);
