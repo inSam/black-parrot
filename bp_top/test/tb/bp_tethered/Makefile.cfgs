@@ -32,7 +32,12 @@ e_bp_unicore_l1_atomic_cfg_amoen       := 1
 
 e_bp_default_cfg_amoen                 := 0
 
+ifneq (,$(findstring multicore,$(CFG)))
+_AMOEN := 1
+else
 _AMOEN :=$($(CFG)_amoen)
+endif
+
 ifeq ($(_AMOEN),)
 	export AMOEN ?= 0
 else
