@@ -48,6 +48,7 @@ module bp_be_pipe_mem
    , output logic                         cache_fail_v_o
    , output logic                         fencei_clean_v_o
    , output logic                         fencei_dirty_v_o
+   , output logic                         acquire_v_o
    , output logic                         load_misaligned_v_o
    , output logic                         load_access_fault_v_o
    , output logic                         load_page_fault_v_o
@@ -162,14 +163,11 @@ module bp_be_pipe_mem
   logic load_misaligned_v, store_misaligned_v;
 
   /* Control signals */
-  logic is_req_mem2, is_req_mem3;
-  logic is_fencei_mem2, is_fencei_mem3;
-  logic is_store_mem2, is_store_mem3;
-
-  wire is_store  = (decode.pipe_mem_early_v | decode.pipe_mem_final_v) & decode.dcache_w_v;
-  wire is_load   = (decode.pipe_mem_early_v | decode.pipe_mem_final_v) & decode.dcache_r_v;
-  wire is_fencei = (decode.pipe_mem_early_v | decode.pipe_mem_final_v) & decode.fu_op inside {e_dcache_op_fencei};
-  wire is_req    = reservation.v & (is_store | is_load);
+  wire is_store   = (decode.pipe_mem_early_v | decode.pipe_mem_final_v) & decode.dcache_w_v;
+  wire is_load    = (decode.pipe_mem_early_v | decode.pipe_mem_final_v) & decode.dcache_r_v;
+  wire is_fencei  = (decode.pipe_mem_early_v | decode.pipe_mem_final_v) & decode.fu_op inside {e_dcache_op_fencei};
+  wire is_req     = reservation.v & (is_store | is_load);
+  wire is_acquire = reservation.v & decode.acquire_v;
 
   // Calculate cache access eaddr
   wire [rv64_eaddr_width_gp-1:0] eaddr = rs1 + imm;
@@ -318,22 +316,24 @@ module bp_be_pipe_mem
       ,.stat_mem_pkt_yumi_o(stat_mem_pkt_yumi_o)
       );
 
+  logic is_req_mem2, is_store_mem2, is_fencei_mem2, is_acquire_mem2;
   bsg_dff_reset
-   #(.width_p(3))
+   #(.width_p(4))
    mem2_reg
     (.clk_i(~clk_i)
      ,.reset_i(reset_i)
-     ,.data_i({is_req, is_store, is_fencei})
-     ,.data_o({is_req_mem2, is_store_mem2, is_fencei_mem2})
+     ,.data_i({is_req, is_store, is_fencei, is_acquire})
+     ,.data_o({is_req_mem2, is_store_mem2, is_fencei_mem2, is_acquire_mem2})
      );
 
+  logic is_req_mem3, is_store_mem3, is_fencei_mem3, is_acquire_mem3;
   bsg_dff_reset
-   #(.width_p(3))
+   #(.width_p(4))
    mem3_reg
     (.clk_i(~clk_i)
      ,.reset_i(reset_i)
-     ,.data_i({is_req_mem2, is_store_mem2, is_fencei_mem2})
-     ,.data_o({is_req_mem3, is_store_mem3, is_fencei_mem3})
+     ,.data_i({is_req_mem2, is_store_mem2, is_fencei_mem2, is_acquire_mem2})
+     ,.data_o({is_req_mem3, is_store_mem3, is_fencei_mem3, is_acquire_mem3})
      );
 
   // Check instruction accesses
@@ -367,6 +367,7 @@ module bp_be_pipe_mem
   assign fencei_clean_v_o       = is_fencei_mem3 & dcache_early_hit_v;
   assign fencei_dirty_v_o       = is_fencei_mem3 & ~dcache_early_hit_v;
 
+  assign acquire_v_o            = is_acquire_mem3 & dcache_early_hit_v;
   assign store_page_fault_v_o   = store_page_fault_v;
   assign load_page_fault_v_o    = load_page_fault_v;
   assign store_access_fault_v_o = store_access_fault_v;

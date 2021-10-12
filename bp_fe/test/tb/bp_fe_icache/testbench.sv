@@ -305,6 +305,8 @@ module testbench
           ,.lce_cmd_o_i(lce_cmd_o)
           ,.lce_cmd_o_v_i(lce_cmd_v_o)
           ,.lce_cmd_o_ready_and_i(lce_cmd_ready_then_i)
+          ,.cache_req_complete_i(cache_req_complete_o)
+          ,.uc_store_req_complete_i(uc_store_req_complete_lo)
           );
 
     bind bp_cce_fsm

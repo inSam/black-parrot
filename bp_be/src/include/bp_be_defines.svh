@@ -145,6 +145,7 @@
       logic                           eret;                                                        \
       logic                           fencei;                                                      \
       logic                           sfence;                                                      \
+      logic                           acquire;                                                     \
       logic                           csrw;                                                        \
       logic                           wfi;                                                         \
       logic                           itlb_miss;                                                   \
@@ -245,7 +246,7 @@
     (paddr_width_mp - page_offset_width_gp + 7)
 
   `define bp_be_commit_pkt_width(vaddr_width_mp, paddr_width_mp) \
-    (3 + `bp_be_pte_leaf_width(paddr_width_mp) +  3*vaddr_width_mp + instr_width_gp + rv64_priv_width_gp + 15)
+    (3 + `bp_be_pte_leaf_width(paddr_width_mp) +  3*vaddr_width_mp + instr_width_gp + rv64_priv_width_gp + 16)
 
   `define bp_be_wb_pkt_width(vaddr_width_mp) \
     (3                                                                                             \

@@ -210,6 +210,7 @@
     logic                             csr_w_v;
     logic                             csr_r_v;
     logic                             mem_v;
+    logic                             acquire_v;
     logic                             opw_v;
     logic                             ops_v;
 
@@ -254,6 +255,7 @@
   typedef struct packed
   {
     logic dcache_miss;
+    logic acquire;
     logic fencei_clean;
     logic sfence_vma;
     logic dbreak;

@@ -630,6 +630,7 @@ module bp_be_csr
   assign commit_pkt_cast_o._interrupt       = interrupt_v_lo;
   assign commit_pkt_cast_o.fencei           = retire_pkt_cast_i.special.fencei_clean;
   assign commit_pkt_cast_o.sfence           = retire_pkt_cast_i.special.sfence_vma;
+  assign commit_pkt_cast_o.acquire          = retire_pkt_cast_i.special.acquire;
   assign commit_pkt_cast_o.wfi              = retire_pkt_cast_i.special.wfi;
   assign commit_pkt_cast_o.eret             = |{retire_pkt_cast_i.special.dret, retire_pkt_cast_i.special.mret, retire_pkt_cast_i.special.sret};
   assign commit_pkt_cast_o.csrw             = retire_pkt_cast_i.special.csrw;
