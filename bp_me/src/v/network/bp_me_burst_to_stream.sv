@@ -20,8 +20,9 @@ module bp_me_burst_to_stream
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
-   , parameter data_width_p = dword_width_gp
-   , parameter `BSG_INV_PARAM(payload_width_p )
+   , parameter in_data_width_p = dword_width_gp
+   , parameter out_data_width_p = dword_width_gp
+   , parameter `BSG_INV_PARAM(payload_width_p)
    , parameter block_width_p = cce_block_width_p
 
    // Bitmask which determines which message types have a data payload
@@ -41,7 +42,7 @@ module bp_me_burst_to_stream
    , output logic                                   in_msg_header_ready_and_o
 
    // ready-valid-and
-   , input [data_width_p-1:0]                       in_msg_data_i
+   , input [in_data_width_p-1:0]                    in_msg_data_i
    , input                                          in_msg_data_v_i
    , input                                          in_msg_last_i
    , output logic                                   in_msg_data_ready_and_o
@@ -49,7 +50,7 @@ module bp_me_burst_to_stream
    // Output BedRock Stream
    // ready-valid-and
    , output logic [bp_header_width_lp-1:0]          out_msg_header_o
-   , output logic [data_width_p-1:0]                out_msg_data_o
+   , output logic [out_data_width_p-1:0]            out_msg_data_o
    , output logic                                   out_msg_v_o
    , input                                          out_msg_ready_and_i
    , output logic                                   out_msg_last_o
@@ -89,7 +90,7 @@ module bp_me_burst_to_stream
   logic stream_new_lo, stream_done_lo;
   bp_me_stream_pump_out
     #(.bp_params_p(bp_params_p)
-      ,.stream_data_width_p(data_width_p)
+      ,.stream_data_width_p(out_data_width_p)
       ,.block_width_p(block_width_p)
       ,.payload_width_p(payload_width_p)
       ,.msg_stream_mask_p(payload_mask_p)
@@ -97,11 +98,13 @@ module bp_me_burst_to_stream
      stream_pump_out
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
+
        ,.msg_header_o(out_msg_header_o)
        ,.msg_data_o(out_msg_data_o)
        ,.msg_v_o(out_msg_v_o)
        ,.msg_last_o(out_msg_last_o)
        ,.msg_ready_and_i(out_msg_ready_and_i)
+
        ,.fsm_base_header_i(msg_header_li)
        ,.fsm_data_i(in_msg_data_i)
        ,.fsm_v_i(fsm_v_li)

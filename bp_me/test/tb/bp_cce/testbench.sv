@@ -406,20 +406,22 @@ module testbench
       );
 
     // LCE Request
-    bp_me_lite_to_burst
+    bp_me_stream_to_burst
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(cce_block_width_p)
        ,.out_data_width_p(dword_width_gp)
        ,.payload_width_p(lce_req_payload_width_lp)
        ,.payload_mask_p(lce_req_payload_mask_gp)
        )
-     lce_req_lite2burst
+     lce_req_stream2burst
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
-       ,.in_msg_i(lce_req_l2b[i])
+       ,.in_msg_header_i(lce_req_l2b[i].header)
+       ,.in_msg_data_i(lce_req_l2b[i].data)
        ,.in_msg_v_i(lce_req_l2b_v[i])
        ,.in_msg_ready_and_o(lce_req_l2b_ready_and[i])
+       ,.in_msg_last_i(lce_req_l2b_v[i]) // stub
 
        ,.out_msg_header_o(lce_req_header[i])
        ,.out_msg_header_v_o(lce_req_header_v[i])
@@ -449,20 +451,22 @@ module testbench
       );
 
     // LCE Response
-    bp_me_lite_to_burst
+    bp_me_stream_to_burst
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(cce_block_width_p)
        ,.out_data_width_p(dword_width_gp)
        ,.payload_width_p(lce_resp_payload_width_lp)
        ,.payload_mask_p(lce_resp_payload_mask_gp)
        )
-     lce_resp_lite2burst
+     lce_resp_stream2burst
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
-       ,.in_msg_i(lce_resp_l2b[i])
+       ,.in_msg_header_i(lce_resp_l2b[i].header)
+       ,.in_msg_data_i(lce_resp_l2b[i].data)
        ,.in_msg_v_i(lce_resp_l2b_v[i])
        ,.in_msg_ready_and_o(lce_resp_l2b_ready_and[i])
+       ,.in_msg_last_i(lce_resp_l2b_v[i]) // stub
 
        ,.out_msg_header_o(lce_resp_header[i])
        ,.out_msg_header_v_o(lce_resp_header_v[i])
@@ -476,14 +480,14 @@ module testbench
        );
 
     // LCE Command In (from xbar to LCE)
-    bp_me_burst_to_lite
+    bp_me_burst_to_stream
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(dword_width_gp)
        ,.out_data_width_p(cce_block_width_p)
        ,.payload_width_p(lce_cmd_payload_width_lp)
        ,.payload_mask_p(lce_cmd_payload_mask_gp)
        )
-     lce_cmd_burst2lite
+     lce_cmd_burst2stream
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
@@ -497,7 +501,8 @@ module testbench
        ,.in_msg_data_ready_and_o(lce_cmd_data_ready_and_lo[i])
        ,.in_msg_last_i(lce_cmd_last_li[i])
 
-       ,.out_msg_o(lce_cmd_li[i])
+       ,.out_msg_header_o(lce_cmd_li[i].header)
+       ,.out_msg_data_o(lce_cmd_li[i].data)
        ,.out_msg_v_o(lce_cmd_v_li[i])
        ,.out_msg_ready_and_i(lce_cmd_ready_and_lo[i])
        );
@@ -519,24 +524,28 @@ module testbench
       );
 
     // LCE Command Out
-    bp_me_lite_to_burst
+    bp_me_stream_to_burst
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(cce_block_width_p)
        ,.out_data_width_p(dword_width_gp)
        ,.payload_width_p(lce_cmd_payload_width_lp)
        ,.payload_mask_p(lce_cmd_payload_mask_gp)
        )
-     lce_cmd_lite2burst
+     lce_cmd_stream2burst
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
-       ,.in_msg_i(lce_cmd_out_l2b[i])
+       ,.in_msg_header_i(lce_cmd_out_l2b[i].header)
+       ,.in_msg_data_i(lce_cmd_out_l2b[i].data)
        ,.in_msg_v_i(lce_cmd_out_l2b_v[i])
        ,.in_msg_ready_and_o(lce_cmd_out_l2b_ready_and[i])
+       ,.in_msg_last_i(lce_cmd_out_l2b_v[i]) // stub
+
        ,.out_msg_header_o(lce_cmd_out_header[i])
        ,.out_msg_header_v_o(lce_cmd_out_header_v[i])
        ,.out_msg_header_ready_and_i(lce_cmd_out_header_ready_and[i])
        ,.out_msg_has_data_o(lce_cmd_out_has_data[i])
+
        ,.out_msg_data_o(lce_cmd_out_data[i])
        ,.out_msg_data_v_o(lce_cmd_out_data_v[i])
        ,.out_msg_data_ready_and_i(lce_cmd_out_data_ready_and[i])

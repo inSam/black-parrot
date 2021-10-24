@@ -323,20 +323,22 @@ module wrapper
       );
 
     // LCE Request
-    bp_me_lite_to_burst
+    bp_me_stream_to_burst
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(cce_block_width_p)
        ,.out_data_width_p(dword_width_gp)
        ,.payload_width_p(lce_req_payload_width_lp)
        ,.payload_mask_p(lce_req_payload_mask_gp)
        )
-     lce_req_lite2burst
+     lce_req_stream2burst
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
-       ,.in_msg_i(lce_req_lo)
+       ,.in_msg_header_i(lce_req_lo.header)
+       ,.in_msg_data_i(lce_req_lo.data)
        ,.in_msg_v_i(lce_req_v_lo)
        ,.in_msg_ready_and_o(lce_req_ready_li)
+       ,.in_msg_last_i(lce_req_v_lo) // stub
 
        ,.out_msg_header_o(cce_lce_req_header)
        ,.out_msg_header_v_o(cce_lce_req_header_v)
@@ -350,7 +352,7 @@ module wrapper
        );
 
     // LCE Response
-    bp_me_lite_to_burst
+    bp_me_stream_to_burst
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(cce_block_width_p)
        ,.out_data_width_p(dword_width_gp)
@@ -361,9 +363,11 @@ module wrapper
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
-       ,.in_msg_i(lce_resp_lo)
+       ,.in_msg_header_i(lce_resp_lo.header)
+       ,.in_msg_data_i(lce_resp_lo.data)
        ,.in_msg_v_i(lce_resp_v_lo)
        ,.in_msg_ready_and_o(lce_resp_ready_li)
+       ,.in_msg_last_i(lce_resp_v_lo) // stub
 
        ,.out_msg_header_o(cce_lce_resp_header)
        ,.out_msg_header_v_o(cce_lce_resp_header_v)
@@ -377,14 +381,14 @@ module wrapper
        );
 
     // LCE Command
-    bp_me_burst_to_lite
+    bp_me_burst_to_stream
      #(.bp_params_p(bp_params_p)
        ,.in_data_width_p(dword_width_gp)
        ,.out_data_width_p(cce_block_width_p)
        ,.payload_width_p(lce_cmd_payload_width_lp)
        ,.payload_mask_p(lce_cmd_payload_mask_gp)
        )
-     lce_cmd_burst2lite
+     lce_cmd_burst2stream
       (.clk_i(clk_i)
        ,.reset_i(reset_i)
 
@@ -398,9 +402,11 @@ module wrapper
        ,.in_msg_data_ready_and_o(cce_lce_cmd_data_ready_and)
        ,.in_msg_last_i(cce_lce_cmd_last)
 
-       ,.out_msg_o(fifo_lce_cmd_li)
+       ,.out_msg_header_o(fifo_lce_cmd_li.header)
+       ,.out_msg_data_o(fifo_lce_cmd_li.data)
        ,.out_msg_v_o(fifo_lce_cmd_v_li)
        ,.out_msg_ready_and_i(fifo_lce_cmd_ready_and_lo)
+       ,.out_msg_last_o()
        );
 
     bsg_two_fifo

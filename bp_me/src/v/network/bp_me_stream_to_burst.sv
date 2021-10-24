@@ -20,8 +20,9 @@ module bp_me_stream_to_burst
  import bp_me_pkg::*;
  #(parameter bp_params_e bp_params_p = e_bp_default_cfg
    `declare_bp_proc_params(bp_params_p)
-   , parameter `BSG_INV_PARAM(data_width_p  )
-   , parameter `BSG_INV_PARAM(payload_width_p  )
+   , parameter `BSG_INV_PARAM(in_data_width_p)
+   , parameter `BSG_INV_PARAM(out_data_width_p)
+   , parameter `BSG_INV_PARAM(payload_width_p)
 
    // Bitmask which determines which message types have a data payload
    // Constructed as (1 << e_payload_msg1 | 1 << e_payload_msg2)
@@ -35,7 +36,7 @@ module bp_me_stream_to_burst
    // Input BedRock Stream
    // ready-valid-and
    , input [bp_header_width_lp-1:0]                 in_msg_header_i
-   , input [data_width_p-1:0]                       in_msg_data_i
+   , input [in_data_width_p-1:0]                    in_msg_data_i
    , input                                          in_msg_v_i
    , input                                          in_msg_last_i
    , output logic                                   in_msg_ready_and_o
@@ -48,7 +49,7 @@ module bp_me_stream_to_burst
    , input                                          out_msg_header_ready_and_i
 
    // ready-valid-and
-   , output logic [data_width_p-1:0]                out_msg_data_o
+   , output logic [out_data_width_p-1:0]            out_msg_data_o
    , output logic                                   out_msg_data_v_o
    , output logic                                   out_msg_last_o
    , input                                          out_msg_data_ready_and_i
@@ -84,10 +85,32 @@ module bp_me_stream_to_burst
   assign out_msg_header_v_o = in_msg_v_i & ~streaming_r;
   assign out_msg_has_data_o = has_data;
 
-  // data passthrough
-  assign out_msg_data_o = in_msg_data_i;
-  assign out_msg_data_v_o = in_msg_v_i & streaming_r;
-  assign out_msg_last_o = in_msg_last_i;
+  if (in_data_width_p > out_data_width_p)
+    begin : wide
+      // data passthrough
+      assign out_msg_data_o = in_msg_data_i;
+      assign out_msg_data_v_o = in_msg_v_i & streaming_r;
+      assign out_msg_last_o = in_msg_last_i;
+
+      bsg_parallel_in_serial_passthrough
+       #(.width_p(), .els_p())
+       piso
+        (.clk_i(clk_i)
+         ,.reset_i(reset_i)
+
+         ,.data_i(in_msg_data_i)
+         ,.v_i(in_msg_v_i)
+         ,.ready_and_o()
+
+         ,.v_o(out_msg_data_v_o)
+         ,.data_o(out_msg_data_o)
+         ,.ready_and_i()
+         );
+    end
+  else
+    begin : narrow
+
+    end
 
   // Input messages without data ack are acked by sending of the output header.
   // Input messages with data send the output header without acking the input beat and then ack
