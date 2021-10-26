@@ -823,7 +823,7 @@ module testbench
 
   // CCE instruction tracer
   // this is connected to the instruction registered in the EX stage
-  if (cce_ucode_p) begin
+  if (cce_type_p == e_cce_ucode) begin
     bind bp_cce
       bp_me_nonsynth_cce_inst_tracer
         #(.bp_params_p(bp_params_p)

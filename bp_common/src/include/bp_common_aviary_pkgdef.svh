@@ -28,6 +28,13 @@
     ,e_cacc_vdp = 1
   } bp_cacc_type_e;
 
+  typedef enum logic [1:0]
+  {
+    e_cce_fsm = 0
+    ,e_cce_ucode = 1
+    ,e_cce_hybrid = 2
+  } bp_cce_type_e;
+
   typedef struct packed
   {
     // 0: BP unicore (minimal, single-core configuration)
@@ -142,10 +149,9 @@
     integer unsigned acache_block_width;
     integer unsigned acache_fill_width;
 
-    // Microcoded CCE parameters
-    // 0: CCE is FSM-based
-    // 1: CCE is ucode
-    integer unsigned cce_ucode;
+    // CCE selection and parameters
+    // cce_type defined by bp_cce_type_e
+    integer unsigned cce_type;
     // Determines the size of the CCE instruction RAM
     integer unsigned cce_pc_width;
 
@@ -261,7 +267,7 @@
       ,acache_block_width   : 512
       ,acache_fill_width    : 64
 
-      ,cce_ucode            : 0
+      ,cce_type             : e_cce_fsm
       ,cce_pc_width         : 8
 
       ,l2_en               : 1
@@ -769,7 +775,7 @@
 
 
   localparam bp_proc_param_s bp_multicore_1_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_1_cce_ucode_cfg_p
@@ -806,7 +812,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_2_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_2_cce_ucode_cfg_p
@@ -815,7 +821,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_3_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_3_cce_ucode_cfg_p
@@ -824,7 +830,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_4_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_4_cce_ucode_cfg_p
@@ -833,7 +839,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_6_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_6_cce_ucode_cfg_p
@@ -842,7 +848,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_8_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_8_cce_ucode_cfg_p
@@ -851,7 +857,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_12_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_12_cce_ucode_cfg_p
@@ -860,7 +866,7 @@
                         );
 
   localparam bp_proc_param_s bp_multicore_16_cce_ucode_override_p =
-    '{cce_ucode: 1
+    '{cce_type: e_cce_ucode
       ,default : "inv"
       };
   `bp_aviary_derive_cfg(bp_multicore_16_cce_ucode_cfg_p
