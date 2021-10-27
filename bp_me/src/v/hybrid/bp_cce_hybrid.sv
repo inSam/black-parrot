@@ -256,10 +256,6 @@ module bp_cce_hybrid
   logic mem_resp_pending_up, mem_resp_pending_down, mem_resp_pending_clear;
   logic [paddr_width_p-1:0] mem_resp_pending_w_addr;
 
-  logic mem_cmd_pending_w_v, mem_cmd_pending_w_yumi, mem_cmd_pending_w_addr_bypass_hash;
-  logic mem_cmd_pending_up, mem_cmd_pending_down, mem_cmd_pending_clear;
-  logic [paddr_width_p-1:0] mem_cmd_pending_w_addr;
-
   logic lce_resp_pending_w_v, lce_resp_pending_w_yumi, lce_resp_pending_w_addr_bypass_hash;
   logic lce_resp_pending_up, lce_resp_pending_down, lce_resp_pending_clear;
   logic [paddr_width_p-1:0] lce_resp_pending_w_addr;
@@ -327,14 +323,6 @@ module bp_cce_hybrid
       ,.mem_resp_pending_up_i(mem_resp_pending_up)
       ,.mem_resp_pending_down_i(mem_resp_pending_down)
       ,.mem_resp_pending_clear_i(mem_resp_pending_clear)
-      // Pending bits write port - from memory command pipe
-      ,.mem_cmd_pending_w_v_i(mem_cmd_pending_w_v)
-      ,.mem_cmd_pending_w_yumi_o(mem_cmd_pending_w_yumi)
-      ,.mem_cmd_pending_w_addr_i(mem_cmd_pending_w_addr)
-      ,.mem_cmd_pending_w_addr_bypass_hash_i(mem_cmd_pending_w_addr_bypass_hash)
-      ,.mem_cmd_pending_up_i(mem_cmd_pending_up)
-      ,.mem_cmd_pending_down_i(mem_cmd_pending_down)
-      ,.mem_cmd_pending_clear_i(mem_cmd_pending_clear)
       // Pending bits write port - from LCE response pipe
       ,.lce_resp_pending_w_v_i(lce_resp_pending_w_v)
       ,.lce_resp_pending_w_yumi_o(lce_resp_pending_w_yumi)
@@ -518,31 +506,6 @@ module bp_cce_hybrid
       ,.msg_last_o(lce_cmd_last_o)
       );
 
-  // memory command pending bit write buffer
-  logic mem_cmd_pending_w_v_li, mem_cmd_pending_w_ready_then_lo;
-  logic [paddr_width_p-1:0] mem_cmd_pending_w_addr_li;
-  bsg_fifo_1r1w_small
-    #(.width_p(paddr_width_p)
-      ,.els_p(mem_cmd_pending_wbuf_els_p)
-      ,.ready_THEN_valid_p(1)
-      )
-    mem_cmd_pending_wbuf
-     (.clk_i(clk_i)
-      ,.reset_i(reset_i)
-      // input
-      ,.v_i(mem_cmd_pending_w_v_li)
-      ,.ready_o(mem_cmd_pending_w_ready_then_lo)
-      ,.data_i(mem_cmd_pending_w_addr_li)
-      // output
-      ,.v_o(mem_cmd_pending_w_v)
-      ,.yumi_i(mem_cmd_pending_w_yumi)
-      ,.data_o(mem_cmd_pending_w_addr)
-      );
-  assign mem_cmd_pending_w_addr_bypass_hash = 1'b0;
-  assign mem_cmd_pending_up = 1'b1;
-  assign mem_cmd_pending_down = 1'b0;
-  assign mem_cmd_pending_clear = 1'b0;
-
   // memory command xbar
   bp_bedrock_cce_mem_msg_header_s [2:0] mem_cmd_xbar_header_li;
   logic [2:0][mem_data_width_p-1:0]     mem_cmd_xbar_data_li;
@@ -570,20 +533,6 @@ module bp_cce_hybrid
 
   bp_bedrock_cce_mem_msg_header_s mem_cmd_xbar_header_lo;
   assign mem_cmd_header_o = mem_cmd_xbar_header_lo;
-  assign mem_cmd_pending_w_addr_li = mem_cmd_xbar_header_lo.addr;
-
-  // gate handshake on pending write buffer ready
-  // can only send last beat when write buffer is available
-  logic xbar_mem_cmd_v_lo;
-  assign mem_cmd_v_o = mem_cmd_last_o
-                       ? (xbar_mem_cmd_v_lo & mem_cmd_pending_w_ready_then_lo)
-                       : xbar_mem_cmd_v_lo;
-  logic xbar_mem_cmd_ready_and_li;
-  assign xbar_mem_cmd_ready_and_li = mem_cmd_last_o
-                                     ? mem_cmd_ready_and_i & mem_cmd_pending_w_ready_then_lo
-                                     : mem_cmd_ready_and_i;
-
-  assign mem_cmd_pending_w_v_li = xbar_mem_cmd_v_lo & mem_cmd_last_o & mem_cmd_pending_w_ready_then_lo;
 
   bp_me_xbar_stream_buffered
     #(.bp_params_p(bp_params_p)
@@ -603,8 +552,8 @@ module bp_cce_hybrid
       ,.msg_dst_i('0)
       ,.msg_header_o(mem_cmd_xbar_header_lo)
       ,.msg_data_o(mem_cmd_data_o)
-      ,.msg_v_o(xbar_mem_cmd_v_lo)
-      ,.msg_ready_and_i(xbar_mem_cmd_ready_and_li)
+      ,.msg_v_o(mem_cmd_v_o)
+      ,.msg_ready_and_i(mem_cmd_ready_and_i)
       ,.msg_last_o(mem_cmd_last_o)
       );
 

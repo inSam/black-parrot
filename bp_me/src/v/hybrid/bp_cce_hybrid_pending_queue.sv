@@ -68,12 +68,14 @@ module bp_cce_hybrid_pending_queue
     header_buffer
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
+      // input
+      ,.v_i(lce_req_header_v_i)
       ,.ready_o(lce_req_header_ready_and_o)
       ,.data_i({lce_req_has_data_i, lce_req_header_li})
-      ,.v_i(lce_req_header_v_i)
+      // output
       ,.v_o(lce_req_header_v_o)
-      ,.data_o({lce_req_has_data_o, lce_req_header_lo})
       ,.yumi_i(lce_req_header_yumi_i)
+      ,.data_o({lce_req_has_data_o, lce_req_header_lo})
       );
 
   // LCE Request Data Buffer
@@ -84,12 +86,14 @@ module bp_cce_hybrid_pending_queue
     data_buffer
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
+      // input
+      ,.v_i(lce_req_data_v_i)
       ,.ready_o(lce_req_data_ready_and_o)
       ,.data_i({lce_req_last_i, lce_req_data_i})
-      ,.v_i(lce_req_data_v_i)
+      // output
       ,.v_o(lce_req_data_v_o)
-      ,.data_o({lce_req_last_o, lce_req_data_o})
       ,.yumi_i(lce_req_data_yumi_i)
+      ,.data_o({lce_req_last_o, lce_req_data_o})
       );
 
   assign full_o = ~lce_req_header_ready_and_o | ~lce_req_data_ready_and_o;

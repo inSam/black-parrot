@@ -217,7 +217,7 @@ module bp_cce_hybrid_ctrl
 
       // wait for all syncs acks to return
       e_sync_ack: begin
-        if (cnt == '0) begin
+        if ((cnt == '0) || ((cnt == 'd1) && sync_yumi_i)) begin
           state_n = e_ready;
           // release the CCE pipelines for execution next cycle
           drain_then_stall_clear = 1'b1;

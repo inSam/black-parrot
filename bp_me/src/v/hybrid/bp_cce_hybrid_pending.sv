@@ -224,7 +224,7 @@ module bp_cce_hybrid_pending
       // process header from new input or pending queue
       e_ready: begin
         // send pending queue to output if no longer blocked
-        if (~pending_b_lo) begin
+        if (pending_header_v_lo & ~pending_b_lo) begin
           pending_not_lce_en_li = 1'b1;
           pending_not_lce_n = 1'b1;
           lce_req_header_lo = pending_header_lo;
@@ -243,7 +243,7 @@ module bp_cce_hybrid_pending
                     : state_r;
         end
         // send new request to output if not blocked
-        else if (~pending_a_lo) begin
+        else if (lce_req_header_v_i & ~pending_a_lo) begin
           pending_not_lce_en_li = 1'b1;
           lce_req_header_lo = lce_req_header_li;
           lce_req_header_v_o = lce_req_header_v_i;
@@ -261,7 +261,7 @@ module bp_cce_hybrid_pending
                     : state_r;
         end
         // send new request to pending if blocked
-        else if (pending_a_lo) begin
+        else if (lce_req_header_v_i & pending_a_lo) begin
           pending_header_v_li = lce_req_header_v_i;
           lce_req_header_ready_and_o = pending_header_ready_and_lo;
           state_n = (pending_header_v_li & pending_header_ready_and_lo & pending_has_data_li)

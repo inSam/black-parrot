@@ -155,7 +155,7 @@ module bp_cce_hybrid_req
     //  module empty after draining header and data control fifos
     empty_o = ~data_ctrl_v_lo & ~lce_req_header_v_li;
 
-    data_ctrl_li.has_data = lce_req_has_data_li;
+    data_ctrl_li.has_data = lce_req_header_v_li & lce_req_has_data_li;
     data_ctrl_li.cacheable = cacheable_req;
 
     // Header routing
@@ -164,11 +164,11 @@ module bp_cce_hybrid_req
     // cacheable request out
     lce_req_header_o = lce_req_header_li;
     lce_req_header_v_o = '0;
-    lce_req_has_data_o = lce_req_has_data_li;
+    lce_req_has_data_o = lce_req_header_v_li & lce_req_has_data_li;
     // uncacheable request out
     uc_lce_req_header_o = lce_req_header_li;
     uc_lce_req_header_v_o = '0;
-    uc_lce_req_has_data_o = lce_req_has_data_li;
+    uc_lce_req_has_data_o = lce_req_header_v_li & lce_req_has_data_li;
 
     // distribute header to cacheable or uncacheable output
     // space must also be available in data control fifo
@@ -211,16 +211,15 @@ module bp_cce_hybrid_req
   always @(negedge clk_i) begin
     if (~reset_i) begin
       // Cacheable requests must target cacheable memory
-      assert(!(lce_req_header_v_i && ~cacheable_req_li
-               && ((lce_req_header_li.msg_type.req == e_bedrock_req_rd_miss)
-                   || (lce_req_header_li.msg_type.req == e_bedrock_req_wr_miss))
-              )
-            ) else
-        $error("CCE PMA violation - cacheable requests must target cacheable memory");
+      assert(~lce_req_header_v_li
+             || (lce_req_header_li.msg_type.req inside {e_bedrock_req_rd_miss, e_bedrock_req_wr_miss}
+                 && cacheable_req_li)
+             || !(lce_req_header_li.msg_type.req inside {e_bedrock_req_rd_miss, e_bedrock_req_wr_miss}))
+        else $error("CCE PMA violation - cacheable requests must target cacheable memory");
       // Cacheable requests require normal mode
       // TODO: should CCE automatically convert cacheable to uncacheable when in uncached only
       // mode? uc_pipe does this
-      assert(!(lce_req_header_v_i && cacheable_req_li & ~cce_normal_mode)) else
+      assert(!(lce_req_header_v_li && cacheable_req_li & ~cce_normal_mode)) else
         $warning("CCE cacheable request but cacheable mode not enabled");
     end
   end

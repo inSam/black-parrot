@@ -175,7 +175,7 @@ module bp_cce_hybrid_lce_resp_pipe
       e_bedrock_resp_coh_ack: begin
         // TODO: need to be careful about combinational loops from coh_pipe when accepting
         // pending write and coherence ack
-        pending_w_v_o = 1'b1;
+        pending_w_v_o = lce_resp_header_v_li;
         // only consume coh ack if pending write accepted
         lce_resp_header_yumi_lo = lce_resp_header_v_li & pending_w_yumi_i;
         coh_yumi_o = lce_resp_header_yumi_lo;

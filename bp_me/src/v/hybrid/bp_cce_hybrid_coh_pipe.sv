@@ -99,15 +99,6 @@ module bp_cce_hybrid_coh_pipe
    , input                                          mem_resp_pending_down_i
    , input                                          mem_resp_pending_clear_i
 
-   // Pending bits write port - from memory command pipe
-   , input                                          mem_cmd_pending_w_v_i
-   , output logic                                   mem_cmd_pending_w_yumi_o
-   , input [paddr_width_p-1:0]                      mem_cmd_pending_w_addr_i
-   , input                                          mem_cmd_pending_w_addr_bypass_hash_i
-   , input                                          mem_cmd_pending_up_i
-   , input                                          mem_cmd_pending_down_i
-   , input                                          mem_cmd_pending_clear_i
-
    // Pending bits write port - from LCE response pipe (coherence ack)
    , input                                          lce_resp_pending_w_v_i
    , output logic                                   lce_resp_pending_w_yumi_o
@@ -141,11 +132,6 @@ module bp_cce_hybrid_coh_pipe
   bp_bedrock_lce_req_msg_header_s  buf_lce_req_header_li;
   logic buf_lce_req_data_v_li, buf_lce_req_data_ready_and_lo, buf_lce_req_last_li;
   logic [lce_data_width_p-1:0]  buf_lce_req_data_li;
-
-  // FSM pending write signals
-  logic pending_fsm_w_v, pending_fsm_w_yumi, pending_fsm_w_addr_bypass_hash;
-  logic pending_fsm_up, pending_fsm_down, pending_fsm_clear;
-  logic [paddr_width_p-1:0] pending_fsm_w_addr;
 
   // pending bits write input
   // these must be arbitrated between the three write ports: FSM, LCE Response, Mem Response
@@ -676,7 +662,6 @@ module bp_cce_hybrid_coh_pipe
             state_n = lce_req_header_v_li ? e_error : state_r;
           end
           default: begin
-            state_n = e_error;
           end
         endcase
       end // e_ready
@@ -1190,7 +1175,6 @@ module bp_cce_hybrid_coh_pipe
     // the pending bits
     // arbitration order (high to low): FSM, mem_resp, mem_cmd, lce_resp
     mem_resp_pending_w_yumi_o = 1'b0;
-    mem_cmd_pending_w_yumi_o = 1'b0;
     lce_resp_pending_w_yumi_o = 1'b0;
     if (~pending_w_v) begin
       if (mem_resp_pending_w_v_i) begin
@@ -1201,15 +1185,6 @@ module bp_cce_hybrid_coh_pipe
         pending_clear = mem_resp_pending_clear_i;
         pending_w_addr = mem_resp_pending_w_addr_i;
         mem_resp_pending_w_yumi_o = pending_w_yumi;
-      end
-      else if (mem_cmd_pending_w_v_i) begin
-        pending_w_v = mem_cmd_pending_w_v_i;
-        pending_w_addr_bypass_hash = mem_cmd_pending_w_addr_bypass_hash_i;
-        pending_up = mem_cmd_pending_up_i;
-        pending_down = mem_cmd_pending_down_i;
-        pending_clear = mem_cmd_pending_clear_i;
-        pending_w_addr = mem_cmd_pending_w_addr_i;
-        mem_cmd_pending_w_yumi_o = pending_w_yumi;
       end
       else if (lce_resp_pending_w_v_i) begin
         pending_w_v = lce_resp_pending_w_v_i;
