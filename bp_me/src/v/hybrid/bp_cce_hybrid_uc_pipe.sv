@@ -28,6 +28,9 @@ module bp_cce_hybrid_uc_pipe
   (input                                            clk_i
    , input                                          reset_i
 
+   // control signals
+   , output logic                                   empty_o
+
    // LCE Request
    // BedRock Burst protocol: ready&valid
    , input [lce_req_msg_header_width_lp-1:0]        lce_req_header_i
@@ -46,9 +49,6 @@ module bp_cce_hybrid_uc_pipe
    , output logic                                   mem_cmd_v_o
    , input                                          mem_cmd_ready_and_i
    , output logic                                   mem_cmd_last_o
-
-   // control signals
-   , output logic                                   empty_o
    );
 
   `declare_bp_bedrock_lce_if(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);

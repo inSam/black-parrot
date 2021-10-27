@@ -23,26 +23,15 @@ module bp_cce_hybrid_coh_pipe
     , parameter pending_data_els_p         = 2
     , parameter pending_wbuf_els_p         = 2
 
-    , localparam block_size_in_bytes_lp    = (cce_block_width_p/8)
     , localparam lg_num_lce_lp             = `BSG_SAFE_CLOG2(num_lce_p)
-    , localparam lg_num_cce_lp             = `BSG_SAFE_CLOG2(num_cce_p)
-    , localparam lg_block_size_in_bytes_lp = `BSG_SAFE_CLOG2(block_size_in_bytes_lp)
     , localparam lg_lce_assoc_lp           = `BSG_SAFE_CLOG2(lce_assoc_p)
-    , localparam lg_lce_sets_lp            = `BSG_SAFE_CLOG2(lce_sets_p)
-    , localparam num_way_groups_lp         = `BSG_CDIV(cce_way_groups_p, num_cce_p)
-    , localparam lg_num_way_groups_lp      = `BSG_SAFE_CLOG2(num_way_groups_lp)
 
     // maximal number of tag sets stored in the directory for all LCE types
     , localparam max_tag_sets_lp           = `BSG_CDIV(lce_sets_p, num_cce_p)
     , localparam lg_max_tag_sets_lp        = `BSG_SAFE_CLOG2(max_tag_sets_lp)
 
     , localparam counter_max_lp = 256
-    , localparam hash_index_width_lp=$clog2((2**lg_lce_sets_lp+num_cce_p-1)/num_cce_p)
-
     , localparam counter_width_lp = `BSG_SAFE_CLOG2(counter_max_lp+1)
-
-    // log2 of dword width bytes
-    , localparam lg_dword_width_bytes_lp = `BSG_SAFE_CLOG2(dword_width_gp/8)
 
     // interface widths
     `declare_bp_bedrock_lce_if_widths(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
@@ -1189,6 +1178,39 @@ module bp_cce_hybrid_coh_pipe
     // Pending bit write arbitration
     // do this after the FSM code so that pending_w_v can be examined to determine if FSM is writing
     // the pending bits
+    // arbitration order (high to low): FSM, mem_resp, mem_cmd, lce_resp
+    mem_resp_pending_w_yumi_o = 1'b0;
+    mem_cmd_pending_w_yumi_o = 1'b0;
+    lce_resp_pending_w_yumi_o = 1'b0;
+    if (~pending_w_v) begin
+      if (mem_resp_pending_w_v_i) begin
+        pending_w_v = mem_resp_pending_w_v_i;
+        pending_w_addr_bypass_hash = mem_resp_pending_w_addr_bypass_hash_i;
+        pending_up = mem_resp_pending_up_i;
+        pending_down = mem_resp_pending_down_i;
+        pending_clear = mem_resp_pending_clear_i;
+        pending_w_addr = mem_resp_pending_w_addr_i;
+        mem_resp_pending_w_yumi_o = pending_w_yumi;
+      end
+      else if (mem_cmd_pending_w_v_i) begin
+        pending_w_v = mem_cmd_pending_w_v_i;
+        pending_w_addr_bypass_hash = mem_cmd_pending_w_addr_bypass_hash_i;
+        pending_up = mem_cmd_pending_up_i;
+        pending_down = mem_cmd_pending_down_i;
+        pending_clear = mem_cmd_pending_clear_i;
+        pending_w_addr = mem_cmd_pending_w_addr_i;
+        mem_cmd_pending_w_yumi_o = pending_w_yumi;
+      end
+      else if (lce_resp_pending_w_v_i) begin
+        pending_w_v = lce_resp_pending_w_v_i;
+        pending_w_addr_bypass_hash = lce_resp_pending_w_addr_bypass_hash_i;
+        pending_up = lce_resp_pending_up_i;
+        pending_down = lce_resp_pending_down_i;
+        pending_clear = lce_resp_pending_clear_i;
+        pending_w_addr = lce_resp_pending_w_addr_i;
+        lce_resp_pending_w_yumi_o = pending_w_yumi;
+      end
+    end
 
   end // always_comb
 

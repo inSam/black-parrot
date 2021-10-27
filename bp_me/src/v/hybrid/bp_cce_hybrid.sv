@@ -107,10 +107,9 @@ module bp_cce_hybrid
   bp_bedrock_lce_cmd_msg_header_s  ctrl_lce_cmd_header_li;
   logic [lce_data_width_p-1:0] ctrl_lce_cmd_data_li;
 
-  logic drain_then_stall, req_empty, uc_pipe_empty, coh_pipe_empty, mem_credits_full, sync_yumi;
+  logic drain_then_stall, req_empty, uc_pipe_empty, coh_pipe_empty, sync_yumi;
+  logic mem_credits_full, mem_credits_empty;
   logic inv_yumi, coh_yumi, wb_yumi;
-  // TODO: connect to control
-  logic mem_resp_pipe_empty, lce_resp_pipe_empty;
   bp_cce_mode_e cce_mode;
   logic [cce_id_width_p-1:0] cce_id;
 
@@ -235,9 +234,17 @@ module bp_cce_hybrid
   logic [paddr_width_p-1:0] spec_w_addr;
   bp_cce_spec_s spec_bits;
 
-  logic pending_w_v, pending_w_ready_and, pending_w_addr_bypass_hash;
-  logic pending_up, pending_down, pending_clear;
-  logic [paddr_width_p-1:0] pending_w_addr;
+  logic mem_resp_pending_w_v, mem_resp_pending_w_yumi, mem_resp_pending_w_addr_bypass_hash;
+  logic mem_resp_pending_up, mem_resp_pending_down, mem_resp_pending_clear;
+  logic [paddr_width_p-1:0] mem_resp_pending_w_addr;
+
+  logic mem_cmd_pending_w_v, mem_cmd_pending_w_yumi, mem_cmd_pending_w_addr_bypass_hash;
+  logic mem_cmd_pending_up, mem_cmd_pending_down, mem_cmd_pending_clear;
+  logic [paddr_width_p-1:0] mem_cmd_pending_w_addr;
+
+  logic lce_resp_pending_w_v, lce_resp_pending_w_yumi, lce_resp_pending_w_addr_bypass_hash;
+  logic lce_resp_pending_up, lce_resp_pending_down, lce_resp_pending_clear;
+  logic [paddr_width_p-1:0] lce_resp_pending_w_addr;
 
   bp_cce_hybrid_coh_pipe
     #(.bp_params_p(bp_params_p)
@@ -291,13 +298,29 @@ module bp_cce_hybrid
       ,.spec_state_v_o(spec_state_v)
       ,.spec_bits_o(spec_bits)
       // Pending bits write port - from memory response pipe
-      ,.pending_w_v_i(pending_w_v)
-      ,.pending_w_ready_and_o(pending_w_ready_and)
-      ,.pending_w_addr_i(pending_w_addr)
-      ,.pending_w_addr_bypass_hash_i(pending_w_addr_bypass_hash)
-      ,.pending_up_i(pending_up)
-      ,.pending_down_i(pending_down)
-      ,.pending_clear_i(pending_clear)
+      ,.mem_resp_pending_w_v_i(mem_resp_pending_w_v)
+      ,.mem_resp_pending_w_yumi_o(mem_resp_pending_w_yumi)
+      ,.mem_resp_pending_w_addr_i(mem_resp_pending_w_addr)
+      ,.mem_resp_pending_w_addr_bypass_hash_i(mem_resp_pending_w_addr_bypass_hash)
+      ,.mem_resp_pending_up_i(mem_resp_pending_up)
+      ,.mem_resp_pending_down_i(mem_resp_pending_down)
+      ,.mem_resp_pending_clear_i(mem_resp_pending_clear)
+      // Pending bits write port - from memory command pipe
+      ,.mem_cmd_pending_w_v_i(mem_cmd_pending_w_v)
+      ,.mem_cmd_pending_w_yumi_o(mem_cmd_pending_w_yumi)
+      ,.mem_cmd_pending_w_addr_i(mem_cmd_pending_w_addr)
+      ,.mem_cmd_pending_w_addr_bypass_hash_i(mem_cmd_pending_w_addr_bypass_hash)
+      ,.mem_cmd_pending_up_i(mem_cmd_pending_up)
+      ,.mem_cmd_pending_down_i(mem_cmd_pending_down)
+      ,.mem_cmd_pending_clear_i(mem_cmd_pending_clear)
+      // Pending bits write port - from LCE response pipe
+      ,.lce_resp_pending_w_v_i(lce_resp_pending_w_v)
+      ,.lce_resp_pending_w_yumi_o(lce_resp_pending_w_yumi)
+      ,.lce_resp_pending_w_addr_i(lce_resp_pending_w_addr)
+      ,.lce_resp_pending_w_addr_bypass_hash_i(lce_resp_pending_w_addr_bypass_hash)
+      ,.lce_resp_pending_up_i(lce_resp_pending_up)
+      ,.lce_resp_pending_down_i(lce_resp_pending_down)
+      ,.lce_resp_pending_clear_i(lce_resp_pending_clear)
       );
 
   // Memory Response pipe
@@ -317,7 +340,6 @@ module bp_cce_hybrid
       // control
       ,.cce_mode_i(cce_mode)
       ,.cce_id_i(cce_id)
-      ,.empty_o(mem_resp_pipe_empty)
       // Spec bits write port - from coherent pipe
       ,.spec_w_v_i(spec_w_v)
       ,.spec_w_addr_i(spec_w_addr)
@@ -328,13 +350,13 @@ module bp_cce_hybrid
       ,.spec_state_v_i(spec_state_v)
       ,.spec_bits_i(spec_bits)
       // Pending bits write port - to coherent pipe
-      ,.pending_w_v_o(pending_w_v)
-      ,.pending_w_ready_and_i(pending_w_ready_and)
-      ,.pending_w_addr_o(pending_w_addr)
-      ,.pending_w_addr_bypass_hash_o(pending_w_addr_bypass)
-      ,.pending_up_o(pending_up)
-      ,.pending_down_o(pending_down)
-      ,.pending_clear_o(pending_clear)
+      ,.pending_w_v_o(mem_resp_pending_w_v)
+      ,.pending_w_yumi_i(mem_resp_pending_w_yumi)
+      ,.pending_w_addr_o(mem_resp_pending_w_addr)
+      ,.pending_w_addr_bypass_hash_o(mem_resp_pending_w_addr_bypass)
+      ,.pending_up_o(mem_resp_pending_up)
+      ,.pending_down_o(mem_resp_pending_down)
+      ,.pending_clear_o(mem_resp_pending_clear)
       // LCE Command to arbiter
       ,.lce_cmd_header_o(ctrl_lce_cmd_header_li)
       ,.lce_cmd_header_v_o(ctrl_lce_cmd_header_v_li)
@@ -386,16 +408,40 @@ module bp_cce_hybrid
       ,.mem_cmd_v_o(lce_resp_mem_cmd_v_lo)
       ,.mem_cmd_ready_and_i(lce_resp_mem_cmd_ready_and_li)
       ,.mem_cmd_last_o(lce_resp_mem_cmd_last_lo)
+      // Pending bits write port - to coherent pipe
+      ,.pending_w_v_o(lce_resp_pending_w_v)
+      ,.pending_w_yumi_i(lce_resp_pending_w_yumi)
+      ,.pending_w_addr_o(lce_resp_pending_w_addr)
+      ,.pending_w_addr_bypass_hash_o(lce_resp_pending_w_addr_bypass)
+      ,.pending_up_o(lce_resp_pending_up)
+      ,.pending_down_o(lce_resp_pending_down)
+      ,.pending_clear_o(lce_resp_pending_clear)
       // response signals
       ,.sync_yumi_o(sync_yumi)
       ,.coh_yumi_o(coh_yumi)
       ,.inv_yumi_o(inv_yumi)
       ,.wb_yumi_o(wb_yumi)
-      ,.empty_o(lce_resp_pipe_empty)
       );
 
   // TODO: LCE Command arbitration
 
   // TODO: Memory Command arbitration
+  // TODO: memory command pending bits write
+
+  logic [`BSG_WIDTH(mem_noc_max_credits_p)-1:0] mem_credit_count_lo;
+  assign mem_credits_empty = (mem_credit_count_lo == mem_noc_max_credits_p);
+  assign mem_credits_full = (mem_credit_count_lo == 0);
+  bsg_flow_counter
+    #(.els_p(mem_noc_max_credits_p))
+    mem_credit_counter
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      // memory commands consume credits - once on last beat per message
+      ,.v_i(mem_cmd_v_o & mem_cmd_last_o)
+      ,.ready_i(mem_cmd_ready_and_i)
+      // memory responses return credits - from memory response pipe
+      ,.yumi_i(mem_credit_return)
+      ,.count_o(mem_credit_count_lo)
+      );
 
 endmodule

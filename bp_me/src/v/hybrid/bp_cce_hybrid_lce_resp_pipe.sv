@@ -65,7 +65,6 @@ module bp_cce_hybrid_lce_resp_pipe
    , output logic                                   inv_yumi_o
    , output logic                                   coh_yumi_o
    , output logic                                   wb_yumi_o
-   , output logic                                   empty_o
    );
 
   // Define structure variables for output queues
@@ -160,8 +159,6 @@ module bp_cce_hybrid_lce_resp_pipe
     // coherence ack responses decrement pending bit
     pending_down_o = 1'b1;
     pending_clear_o = 1'b0;
-
-    empty_o = ~lce_resp_header_v_li;
 
     // all responses except wb are sunk
     // wb is forwarded to memory command output

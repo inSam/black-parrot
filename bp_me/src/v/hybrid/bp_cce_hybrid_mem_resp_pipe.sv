@@ -61,7 +61,6 @@ module bp_cce_hybrid_mem_resp_pipe
    // control
    , input bp_cce_mode_e                            cce_mode_i
    , input [cce_id_width_p-1:0]                     cce_id_i
-   , output logic                                   empty_o
 
    // Spec bits write port - from coherent pipe
    , input                                          spec_w_v_i
@@ -234,9 +233,6 @@ module bp_cce_hybrid_mem_resp_pipe
   always_comb begin
     // state
     state_n = state_r;
-
-    // module is empty when in ready state and no valid response
-    empty_o = (state_r == e_ready) & ~mem_resp_v_li;
 
     // memory response stream pump
     mem_resp_yumi_lo = '0;
