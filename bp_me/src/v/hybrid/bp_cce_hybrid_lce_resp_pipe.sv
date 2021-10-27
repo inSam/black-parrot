@@ -132,8 +132,28 @@ module bp_cce_hybrid_lce_resp_pipe
       ,.fsm_done_o(mem_cmd_stream_done_li)
       );
 
+  enum logic {e_ready, e_write_pending} state_n, state_r;
+  logic [paddr_width_p-1:0] resp_addr_r, resp_addr_n;
+  logic pending_up_not_down_r, pending_up_not_down_n;
+
+  always_ff @(posedge clk_i) begin
+    if (reset_i) begin
+      state_r <= e_ready;
+      resp_addr_r <= '0;
+      pending_up_not_down_r <= 1'b0;
+    end else begin
+      state_r <= state_n;
+      resp_addr_r <= resp_addr_n;
+      pending_up_not_down_r <= pending_up_not_down_n;
+    end
+  end
+
   // Combinational Logic
   always_comb begin
+    // state
+    state_n = state_r;
+    resp_addr_n = resp_addr_r;
+    pending_up_not_down_n = pending_up_not_down_r;
     // memory command output
     mem_cmd_base_header_lo = '0;
     mem_cmd_base_header_lo.addr = lce_resp_header_li.addr;
@@ -154,46 +174,59 @@ module bp_cce_hybrid_lce_resp_pipe
 
     // pending write port
     pending_w_v_o = 1'b0;
-    pending_w_addr_o = lce_resp_header_li.addr;
+    pending_w_addr_o = resp_addr_r;
     pending_w_addr_bypass_hash_o = 1'b0;
     pending_up_o = 1'b0;
-    // coherence ack responses decrement pending bit
-    pending_down_o = 1'b1;
+    pending_down_o = 1'b0;
     pending_clear_o = 1'b0;
 
-    // all responses except wb are sunk
-    // wb is forwarded to memory command output
-    unique case (lce_resp_header_li.msg_type)
-      e_bedrock_resp_sync_ack: begin
-        lce_resp_header_yumi_lo = lce_resp_header_v_li;
-        sync_yumi_o = lce_resp_header_yumi_lo;
+    unique case (state_r)
+      e_ready: begin
+        // all responses except wb are sunk
+        // wb is forwarded to memory command output
+        unique case (lce_resp_header_li.msg_type)
+          e_bedrock_resp_sync_ack: begin
+            lce_resp_header_yumi_lo = lce_resp_header_v_li;
+            sync_yumi_o = lce_resp_header_yumi_lo;
+          end
+          e_bedrock_resp_inv_ack: begin
+            lce_resp_header_yumi_lo = lce_resp_header_v_li;
+            inv_yumi_o = lce_resp_header_yumi_lo;
+          end
+          e_bedrock_resp_coh_ack: begin
+            resp_addr_n = lce_resp_header_li.addr;
+            pending_up_not_down_n = 1'b0;
+            lce_resp_header_yumi_lo = lce_resp_header_v_li;
+            coh_yumi_o = lce_resp_header_yumi_lo;
+            state_n = coh_yumi_o ? e_write_pending : state_r;
+          end
+          e_bedrock_resp_wb: begin
+            resp_addr_n = lce_resp_header_li.addr;
+            pending_up_not_down_n = 1'b1;
+            mem_cmd_v_lo = lce_resp_header_v_li & lce_resp_data_v_i;
+            // can only consume if header is valid, too
+            lce_resp_data_ready_and_o = lce_resp_header_v_li & mem_cmd_ready_and_li;
+            lce_resp_header_yumi_lo = mem_cmd_stream_done_li;
+            wb_yumi_o = lce_resp_header_yumi_lo;
+            state_n = wb_yumi_o ? e_write_pending : state_r;
+          end
+          e_bedrock_resp_null_wb: begin
+            lce_resp_header_yumi_lo = lce_resp_header_v_li;
+            wb_yumi_o = lce_resp_header_yumi_lo;
+          end
+          default: begin
+            // do nothing
+          end
+        endcase
       end
-      e_bedrock_resp_inv_ack: begin
-        lce_resp_header_yumi_lo = lce_resp_header_v_li;
-        inv_yumi_o = lce_resp_header_yumi_lo;
-      end
-      e_bedrock_resp_coh_ack: begin
-        // TODO: need to be careful about combinational loops from coh_pipe when accepting
-        // pending write and coherence ack
-        pending_w_v_o = lce_resp_header_v_li;
-        // only consume coh ack if pending write accepted
-        lce_resp_header_yumi_lo = lce_resp_header_v_li & pending_w_yumi_i;
-        coh_yumi_o = lce_resp_header_yumi_lo;
-      end
-      e_bedrock_resp_wb: begin
-        // requires valid data and header
-        mem_cmd_v_lo = lce_resp_header_v_li & lce_resp_data_v_i;
-        // can only consume if header is valid, too
-        lce_resp_data_ready_and_o = lce_resp_header_v_li & mem_cmd_ready_and_li;
-        lce_resp_header_yumi_lo = mem_cmd_stream_done_li;
-        wb_yumi_o = lce_resp_header_yumi_lo;
-      end
-      e_bedrock_resp_null_wb: begin
-        lce_resp_header_yumi_lo = lce_resp_header_v_li;
-        wb_yumi_o = lce_resp_header_yumi_lo;
+      e_write_pending: begin
+        pending_w_v_o = 1'b1;
+        pending_down_o = ~pending_up_not_down_r;
+        pending_up_o = pending_up_not_down_r;
+        state_n = pending_w_yumi_i ? e_ready : state_r;
       end
       default: begin
-        // do nothing
+        state_n = e_ready;
       end
     endcase
   end // always_comb
