@@ -211,7 +211,7 @@ module testbench
   logic lce_cmd_data_v_lo, lce_cmd_data_ready_and_li;
   logic lce_cmd_last_lo;
   logic [lg_num_lce_lp-1:0] lce_cmd_dst_lo;
-  assign lce_cmd_dst_lo = lce_cmd_header_lo.payload.dst_id;
+  assign lce_cmd_dst_lo = lce_cmd_header_lo.payload.dst_id[0+:lg_num_lce_lp];
 
   // Req Crossbar
   bp_me_xbar_burst
@@ -543,7 +543,7 @@ module testbench
        ,.out_msg_last_o(lce_cmd_out_last[i])
        );
 
-    assign lce_cmd_out_dst[i] = lce_cmd_out_header[i].payload.dst_id;
+    assign lce_cmd_out_dst[i] = lce_cmd_out_header[i].payload.dst_id[0+:lg_num_lce_lp];
   end
 
   // CCE
@@ -860,7 +860,7 @@ module testbench
          );
 
   end
-  else begin
+  else if (cce_type_p == e_cce_fsm) begin
     bind bp_cce_fsm
       bp_me_nonsynth_cce_perf
         #(.bp_params_p(bp_params_p))

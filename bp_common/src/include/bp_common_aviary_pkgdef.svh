@@ -966,6 +966,16 @@
                         ,bp_test_multicore_half_cce_ucode_cfg_p
                         );
 
+  localparam bp_proc_param_s bp_test_multicore_half_cce_hybrid_override_p =
+    '{num_lce  : 1
+      ,cce_type : e_cce_hybrid
+      ,default : "inv"
+      };
+  `bp_aviary_derive_cfg(bp_test_multicore_half_cce_hybrid_cfg_p
+                        ,bp_test_multicore_half_cce_hybrid_override_p
+                        ,bp_test_multicore_half_cce_ucode_cfg_p
+                        );
+
   `ifndef BP_CUSTOM_BASE_CFG
   `define BP_CUSTOM_BASE_CFG bp_default_cfg_p
   `endif
@@ -1031,7 +1041,7 @@
       ,`bp_aviary_define_override(acache_block_width, BP_ACACHE_BLOCK_WIDTH, `BP_CUSTOM_BASE_CFG)
       ,`bp_aviary_define_override(acache_fill_width, BP_ACACHE_FILL_WIDTH, `BP_CUSTOM_BASE_CFG)
 
-      ,`bp_aviary_define_override(cce_ucode, BP_CCE_UCODE, `BP_CUSTOM_BASE_CFG)
+      ,`bp_aviary_define_override(cce_type, BP_CCE_UCODE, `BP_CUSTOM_BASE_CFG)
       ,`bp_aviary_define_override(cce_pc_width, BP_CCE_PC_WIDTH, `BP_CUSTOM_BASE_CFG)
 
       ,`bp_aviary_define_override(l2_en, BP_L2_EN, `BP_CUSTOM_BASE_CFG)
@@ -1065,8 +1075,11 @@
   /* verilator lint_off WIDTH */
   parameter bp_proc_param_s [max_cfgs-1:0] all_cfgs_gp =
   {
+    // Hybrid CCE configs
+    bp_test_multicore_half_cce_hybrid_cfg_p
+
     // Various testing configs
-    bp_test_multicore_8x1_cce_ucode_cfg_p
+    ,bp_test_multicore_8x1_cce_ucode_cfg_p
     ,bp_test_multicore_8x1_cfg_p
     ,bp_test_multicore_4x1_cce_ucode_cfg_p
     ,bp_test_multicore_4x1_cfg_p
@@ -1142,8 +1155,11 @@
   // This enum MUST be kept up to date with the parameter array above
   typedef enum bit [lg_max_cfgs-1:0]
   {
+    // Hybrid CCE configs
+    e_bp_test_multicore_half_cce_hybrid_cfg         = 57
+
     // Various testing config
-    e_bp_test_multicore_8x1_cce_ucode_cfg           = 56
+    ,e_bp_test_multicore_8x1_cce_ucode_cfg          = 56
     ,e_bp_test_multicore_8x1_cfg                    = 55
     ,e_bp_test_multicore_4x1_cce_ucode_cfg          = 54
     ,e_bp_test_multicore_4x1_cfg                    = 53

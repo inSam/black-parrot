@@ -209,7 +209,7 @@ module bp_cce_hybrid_mem_resp_pipe
       ,.ready_o(pending_w_ready_and)
       ,.data_i({pending_up, pending_down, pending_clear, pending_w_addr_bypass_hash, pending_w_addr})
       // output - to pending module
-      ,.v_o(pending_w_v_o))
+      ,.v_o(pending_w_v_o)
       ,.yumi_i(pending_w_yumi_i)
       ,.data_o({pending_up_o, pending_down_o, pending_clear_o, pending_w_addr_bypass_hash_o, pending_w_addr_o})
       );
@@ -340,7 +340,7 @@ module bp_cce_hybrid_mem_resp_pipe
             // dequeue first mem_resp beat with first data beat
             lce_cmd_header_v_o = mem_resp_valid;
             lce_cmd_has_data_o = 1'b1;
-            lce_cmd_header_lo.msg_type = mem_resp_header_li.payload.uncached
+            lce_cmd_header_lo.msg_type = mem_resp_base_header_li.payload.uncached
                                          ? e_bedrock_cmd_uc_data
                                          : e_bedrock_cmd_data;
             // send data next cycle, after header sends

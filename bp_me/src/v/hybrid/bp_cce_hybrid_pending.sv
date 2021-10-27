@@ -32,6 +32,8 @@ module bp_cce_hybrid_pending
     , parameter data_els_p       = 2
 
     , localparam num_way_groups_lp = `BSG_CDIV(cce_way_groups_p, num_cce_p)
+    , localparam block_size_in_bytes_lp    = (cce_block_width_p/8)
+    , localparam lg_block_size_in_bytes_lp = `BSG_SAFE_CLOG2(block_size_in_bytes_lp)
 
     // interface widths
     `declare_bp_bedrock_lce_if_widths(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce)
@@ -75,7 +77,7 @@ module bp_cce_hybrid_pending
 
   `declare_bp_bedrock_lce_if(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
 
-  bp_bedrock_lce_req_msg_header_s lce_req_header_li, pending_header_li, pending_header_lo, lce_req_header_lo;
+  bp_bedrock_lce_req_msg_header_s lce_req_header_li, lce_req_header_lo;
   assign lce_req_header_li = lce_req_header_i;
   assign lce_req_header_o = lce_req_header_lo;
 
@@ -110,7 +112,7 @@ module bp_cce_hybrid_pending
       ,.lce_req_data_i(pending_data_li)
       ,.lce_req_data_v_i(pending_data_v_li)
       ,.lce_req_data_ready_and_o(pending_data_ready_and_lo)
-      ,.lce_req_last_i(pending_data_last_li)
+      ,.lce_req_last_i(pending_last_li)
       ,.full_o(pending_full_lo)
       ,.lce_req_header_o(pending_header_lo)
       ,.lce_req_header_v_o(pending_header_v_lo)
@@ -119,7 +121,7 @@ module bp_cce_hybrid_pending
       ,.lce_req_data_o(pending_data_lo)
       ,.lce_req_data_v_o(pending_data_v_lo)
       ,.lce_req_data_yumi_i(pending_data_yumi_li)
-      ,.lce_req_last_o(pending_data_last_lo)
+      ,.lce_req_last_o(pending_last_lo)
       );
   assign empty_o = ~pending_header_v_lo & ~pending_data_v_lo;
 
@@ -233,9 +235,9 @@ module bp_cce_hybrid_pending
           pending_w_yumi_o = 1'b0; // block external write
           pending_w_addr_li = pending_header_lo.addr;
           pending_w_addr_bypass_hash_li = 1'b0;
-          pending_w_up_li = 1'b1;
-          pending_w_down_li = 1'b0;
-          pending_w_clear_li = 1'b0;
+          pending_up_li = 1'b1;
+          pending_down_li = 1'b0;
+          pending_clear_li = 1'b0;
           state_n = (lce_req_header_v_o & lce_req_header_ready_and_i & lce_req_has_data_o)
                     ? e_data_to_out
                     : state_r;
@@ -251,9 +253,9 @@ module bp_cce_hybrid_pending
           pending_w_yumi_o = 1'b0; // block external write
           pending_w_addr_li = lce_req_header_li.addr;
           pending_w_addr_bypass_hash_li = 1'b0;
-          pending_w_up_li = 1'b1;
-          pending_w_down_li = 1'b0;
-          pending_w_clear_li = 1'b0;
+          pending_up_li = 1'b1;
+          pending_down_li = 1'b0;
+          pending_clear_li = 1'b0;
           state_n = (lce_req_header_v_o & lce_req_header_ready_and_i & lce_req_has_data_o)
                     ? e_data_to_out
                     : state_r;

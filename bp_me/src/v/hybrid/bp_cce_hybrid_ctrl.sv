@@ -65,6 +65,9 @@ module bp_cce_hybrid_ctrl
    , input                                          mem_credits_full_i
    );
 
+  // control module sends header only commands
+  wire unused = lce_cmd_data_ready_and_i;
+
   // Define structure variables for output queues
   `declare_bp_bedrock_lce_if(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
   bp_bedrock_lce_cmd_msg_header_s  lce_cmd_header_lo;
@@ -80,6 +83,7 @@ module bp_cce_hybrid_ctrl
   // 0 = uncached only
   // 1 = cacheable / normal
   logic cce_mode_en;
+  logic [$bits(bp_cce_mode_e)-1:0] cce_mode_lo;
   bsg_dff_reset_en
     #(.width_p($bits(bp_cce_mode_e))
       ,.reset_val_p(0)
@@ -89,8 +93,9 @@ module bp_cce_hybrid_ctrl
       ,.reset_i(reset_i)
       ,.en_i(cce_mode_en)
       ,.data_i(cfg_bus_cast_i.cce_mode)
-      ,.data_o(cce_mode_o)
+      ,.data_o(cce_mode_lo)
       );
+  assign cce_mode_o = bp_cce_mode_e'(cce_mode_lo);
 
   wire normal_mode_li = (cfg_bus_cast_i.cce_mode == e_cce_mode_normal);
   wire uncached_mode_li = (cfg_bus_cast_i.cce_mode == e_cce_mode_uncached);
@@ -159,9 +164,6 @@ module bp_cce_hybrid_ctrl
 
   always_comb begin
     state_n = state_r;
-
-    // sync counter
-    cnt_inc = '0;
 
     // mode transition
     cce_mode_en = 1'b0;

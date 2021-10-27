@@ -154,11 +154,11 @@ module bp_cce_hybrid_uc_pipe
     lce_req_data_yumi_lo = '0;
     // memory command defaults
     mem_cmd_base_header_lo = '0;
-    mem_cmd_base_header_lo.addr = lce_req.addr;
-    mem_cmd_base_header_lo.size = lce_req.size;
-    mem_cmd_base_header_lo.subop = lce_req.subop;
-    mem_cmd_base_header_lo.payload.lce_id = lce_req.payload.src_id;
-    mem_cmd_base_header_lo.payload.way_id = lce_req.payload.lru_way_id;
+    mem_cmd_base_header_lo.addr = lce_req_header_li.addr;
+    mem_cmd_base_header_lo.size = lce_req_header_li.size;
+    mem_cmd_base_header_lo.subop = lce_req_header_li.subop;
+    mem_cmd_base_header_lo.payload.lce_id = lce_req_header_li.payload.src_id;
+    mem_cmd_base_header_lo.payload.way_id = lce_req_header_li.payload.lru_way_id;
     mem_cmd_base_header_lo.payload.uncached = 1'b1;
     mem_cmd_data_lo = lce_req_data_li;
     mem_cmd_v_lo = 1'b0;
@@ -168,7 +168,7 @@ module bp_cce_hybrid_uc_pipe
     unique case (state_r)
       // send first beat (header or header+data)
       e_ready: begin
-        unique case (lce_req.msg_type.req)
+        unique case (lce_req_header_li.msg_type.req)
           e_bedrock_req_uc_rd : begin
             mem_cmd_base_header_lo.msg_type.mem = e_bedrock_mem_uc_rd;
             mem_cmd_v_lo = lce_req_header_v_li;
@@ -188,7 +188,7 @@ module bp_cce_hybrid_uc_pipe
           ,e_bedrock_req_wr_miss: begin
             mem_cmd_base_header_lo.msg_type.mem = e_bedrock_mem_uc_rd;
             mem_cmd_base_header_lo.payload.uncached = 1'b0;
-            mem_cmd_base_header_lo.payload.state = (lce_req.msg_type.req == e_bedrock_req_rd_miss)
+            mem_cmd_base_header_lo.payload.state = (lce_req_header_li.msg_type.req == e_bedrock_req_rd_miss)
                                                    ? e_COH_S
                                                    : e_COH_M;
             mem_cmd_v_lo = lce_req_header_v_li;
@@ -206,7 +206,7 @@ module bp_cce_hybrid_uc_pipe
       end // e_ready
       // send remaining data beats
       e_data: begin
-        unique case (lce_req.msg_type.req)
+        unique case (lce_req_header_li.msg_type.req)
           e_bedrock_req_uc_wr: begin
             mem_cmd_base_header_lo.msg_type.mem = e_bedrock_mem_uc_wr;
             mem_cmd_v_lo = lce_req_header_v_li & lce_req_data_v_li;

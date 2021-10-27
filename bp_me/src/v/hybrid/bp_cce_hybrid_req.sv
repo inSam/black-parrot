@@ -175,7 +175,7 @@ module bp_cce_hybrid_req
     lce_req_header_v_o = lce_req_header_v_li & cacheable_req & data_ctrl_ready_then_lo;
     uc_lce_req_header_v_o = lce_req_header_v_li & ~cacheable_req & data_ctrl_ready_then_lo;
     // consume request header from buffer
-    lce_req_header_yumi_lo = (lce_req_header_v_lo & lce_req_header_ready_and_i)
+    lce_req_header_yumi_lo = (lce_req_header_v_o & lce_req_header_ready_and_i)
                              | (uc_lce_req_header_v_o & uc_lce_req_header_ready_and_i);
 
     // Data control fifo is ready->valid. Enqueue when header sends (depends on ready_then)
@@ -221,7 +221,7 @@ module bp_cce_hybrid_req
       // TODO: should CCE automatically convert cacheable to uncacheable when in uncached only
       // mode? uc_pipe does this
       assert(!(lce_req_header_v_i && cacheable_req_li & ~cce_normal_mode)) else
-        $warn("CCE cacheable request but cacheable mode not enabled");
+        $warning("CCE cacheable request but cacheable mode not enabled");
     end
   end
   //synopsys translate_on

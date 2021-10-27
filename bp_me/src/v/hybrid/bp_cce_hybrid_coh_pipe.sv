@@ -22,9 +22,13 @@ module bp_cce_hybrid_coh_pipe
     , parameter pending_header_els_p       = 2
     , parameter pending_data_els_p         = 2
     , parameter pending_wbuf_els_p         = 2
+    , parameter header_fifo_els_p          = 2
+    , parameter data_fifo_els_p            = 2
 
     , localparam lg_num_lce_lp             = `BSG_SAFE_CLOG2(num_lce_p)
     , localparam lg_lce_assoc_lp           = `BSG_SAFE_CLOG2(lce_assoc_p)
+
+    , localparam num_way_groups_lp = `BSG_CDIV(cce_way_groups_p, num_cce_p)
 
     // maximal number of tag sets stored in the directory for all LCE types
     , localparam max_tag_sets_lp           = `BSG_CDIV(lce_sets_p, num_cce_p)
@@ -66,7 +70,6 @@ module bp_cce_hybrid_coh_pipe
    , output logic                                   lce_cmd_last_o
 
    , input                                          inv_yumi_i
-   , input                                          coh_yumi_i
    , input                                          wb_yumi_i
 
    // CCE-MEM Interface
@@ -114,6 +117,12 @@ module bp_cce_hybrid_coh_pipe
    , input                                          lce_resp_pending_down_i
    , input                                          lce_resp_pending_clear_i
    );
+
+  wire unsued = lce_cmd_data_ready_and_i;
+
+  // parameter checks
+  if (counter_max_lp < num_way_groups_lp) $fatal(0,"Counter max value not large enough");
+  if (counter_max_lp < max_tag_sets_lp) $fatal(0,"Counter max value not large enough");
 
   // Define structure variables for output queues
   `declare_bp_bedrock_lce_if(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
@@ -196,9 +205,9 @@ module bp_cce_hybrid_coh_pipe
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
       // input
-      ,.v_i(buf_lce_req_header_v_i)
-      ,.ready_o(buf_lce_req_header_ready_and_o)
-      ,.data_i({buf_lce_req_has_data_i, buf_lce_req_header_i})
+      ,.v_i(buf_lce_req_header_v_li)
+      ,.ready_o(buf_lce_req_header_ready_and_lo)
+      ,.data_i({buf_lce_req_has_data_li, buf_lce_req_header_li})
       // output
       ,.v_o(lce_req_header_v_li)
       ,.yumi_i(lce_req_header_yumi_lo)
@@ -216,9 +225,9 @@ module bp_cce_hybrid_coh_pipe
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
       // input
-      ,.v_i(buf_lce_req_data_v_i)
-      ,.ready_o(buf_lce_req_data_ready_and_o)
-      ,.data_i({buf_lce_req_last_i, buf_lce_req_data_i})
+      ,.v_i(buf_lce_req_data_v_li)
+      ,.ready_o(buf_lce_req_data_ready_and_lo)
+      ,.data_i({buf_lce_req_last_li, buf_lce_req_data_li})
       // output
       ,.v_o(lce_req_data_v_li)
       ,.yumi_i(lce_req_data_yumi_lo)
@@ -520,6 +529,7 @@ module bp_cce_hybrid_coh_pipe
     lce_cmd_header_lo = '0;
     lce_cmd_header_lo.payload.src_id = cce_id_i;
     lce_cmd_header_v_o = '0;
+    // never send data with commands
     lce_cmd_has_data_o = '0;
     lce_cmd_data_o = '0;
     lce_cmd_data_v_o = '0;
@@ -1131,36 +1141,36 @@ module bp_cce_hybrid_coh_pipe
         // Resolve speculation
         if (transfer_flag | mshr_r.flags[e_opd_uf]) begin
           // squash speculative memory request if transfer or upgrade
-          spec_w_v = 1'b1;
+          spec_w_v_o = 1'b1;
           // no longer speculative
-          spec_v_li = 1'b1;
-          spec_bits_li.spec = 1'b0;
+          spec_v_o = 1'b1;
+          spec_bits_o.spec = 1'b0;
           // squash the response
-          squash_v_li = 1'b1;
-          spec_bits_li.squash = 1'b1;
+          spec_squash_v_o = 1'b1;
+          spec_bits_o.squash = 1'b1;
         end else if (mshr_r.flags[e_opd_rqf]) begin
           // forward with M state
-          spec_w_v = 1'b1;
-          spec_v_li = 1'b1;
-          fwd_mod_v_li = 1'b1;
-          state_v_li = 1'b1;
-          spec_bits_li.spec = 1'b0;
-          spec_bits_li.state = e_COH_M;
-          spec_bits_li.fwd_mod = 1'b1;
+          spec_w_v_o = 1'b1;
+          spec_v_o = 1'b1;
+          spec_fwd_mod_v_o = 1'b1;
+          spec_state_v_o = 1'b1;
+          spec_bits_o.spec = 1'b0;
+          spec_bits_o.state = e_COH_M;
+          spec_bits_o.fwd_mod = 1'b1;
         end else if (mshr_r.flags[e_opd_csf] | mshr_r.flags[e_opd_nerf]) begin
           // forward with S state
-          spec_w_v = 1'b1;
-          spec_v_li = 1'b1;
-          fwd_mod_v_li = 1'b1;
-          state_v_li = 1'b1;
-          spec_bits_li.spec = 1'b0;
-          spec_bits_li.state = e_COH_S;
-          spec_bits_li.fwd_mod = 1'b1;
+          spec_w_v_o = 1'b1;
+          spec_v_o = 1'b1;
+          spec_fwd_mod_v_o = 1'b1;
+          spec_state_v_o = 1'b1;
+          spec_bits_o.spec = 1'b0;
+          spec_bits_o.state = e_COH_S;
+          spec_bits_o.fwd_mod = 1'b1;
         end else begin
           // forward with E state (as requested)
-          spec_w_v = 1'b1;
-          spec_v_li = 1'b1;
-          spec_bits_li.spec = 1'b0;
+          spec_w_v_o = 1'b1;
+          spec_v_o = 1'b1;
+          spec_bits_o.spec = 1'b0;
         end
         state_n = e_ready;
       end // e_resolve_speculation

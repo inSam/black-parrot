@@ -159,7 +159,7 @@ module bp_cce_hybrid_pending_bits
     if (~reset_i) begin
       assert(!(w_v_i & clear_i & down_i)) else
         $error("%12t |: pending bit decrement lost - clear occurred", $time);
-      assert(!(w_v_i & !(clear_i | up_i | down_i)) else
+      assert(!(w_v_i & !(clear_i | up_i | down_i))) else
         $error("%12t |: pending bit write with no clear, up, or down detected", $time);
       assert(!(w_v_i & up_i & (pending_bits_r[w_wg] == '1))) else
         $error("%12t |: pending bit write overflow detected wg[%d]", $time, w_wg);

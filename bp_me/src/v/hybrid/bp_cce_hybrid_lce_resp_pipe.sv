@@ -67,6 +67,9 @@ module bp_cce_hybrid_lce_resp_pipe
    , output logic                                   wb_yumi_o
    );
 
+  // stream pump does not require last signal from input LCE response
+  wire unused = lce_resp_last_i;
+
   // Define structure variables for output queues
   `declare_bp_bedrock_lce_if(paddr_width_p, lce_data_width_p, lce_id_width_p, cce_id_width_p, lce_assoc_p, lce);
   `declare_bp_bedrock_mem_if(paddr_width_p, mem_data_width_p, lce_id_width_p, lce_assoc_p, cce);
@@ -131,8 +134,6 @@ module bp_cce_hybrid_lce_resp_pipe
 
   // Combinational Logic
   always_comb begin
-    // state
-    state_n = state_r;
     // memory command output
     mem_cmd_base_header_lo = '0;
     mem_cmd_base_header_lo.addr = lce_resp_header_li.addr;

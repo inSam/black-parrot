@@ -20,10 +20,13 @@ module bp_cce_hybrid
     , parameter lce_data_width_p           = dword_width_gp
     , parameter mem_data_width_p           = dword_width_gp
     , parameter req_data_ctrl_els_p        = 2
+    , parameter coh_header_fifo_els_p      = 2
+    , parameter coh_data_fifo_els_p        = 2
     , parameter uc_header_fifo_els_p       = 2
     , parameter uc_data_fifo_els_p         = 2
     , parameter mem_resp_header_els_p      = 2
     , parameter lce_resp_header_els_p      = 2
+    , parameter mem_cmd_pending_wbuf_els_p = 2
 
     , localparam cfg_bus_width_lp          = `bp_cfg_bus_width(hio_width_p, core_id_width_p, cce_id_width_p, lce_id_width_p)
 
@@ -83,8 +86,6 @@ module bp_cce_hybrid
 
   // parameter checks
   if (lce_sets_p <= 1) $fatal(0,"Number of LCE sets must be greater than 1");
-  if (counter_max_lp < num_way_groups_lp) $fatal(0,"Counter max value not large enough");
-  if (counter_max_lp < max_tag_sets_lp) $fatal(0,"Counter max value not large enough");
   if (icache_block_width_p != cce_block_width_p) $fatal(0,"icache block width must match cce block width");
   if (dcache_block_width_p != cce_block_width_p) $fatal(0,"dcache block width must match cce block width");
   if ((num_cacc_p) > 0 && (acache_block_width_p != cce_block_width_p)) $fatal(0,"acache block width must match cce block width");
@@ -101,6 +102,24 @@ module bp_cce_hybrid
   bp_cfg_bus_s cfg_bus_cast_i;
   assign cfg_bus_cast_i = cfg_bus_i;
 
+  // Memory Network Credits
+  logic [`BSG_WIDTH(mem_noc_max_credits_p)-1:0] mem_credit_count_lo;
+  wire mem_credits_empty = (mem_credit_count_lo == mem_noc_max_credits_p);
+  wire mem_credits_full = (mem_credit_count_lo == 0);
+  logic mem_credit_return;
+  bsg_flow_counter
+    #(.els_p(mem_noc_max_credits_p))
+    mem_credit_counter
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      // memory commands consume credits - once on last beat per message
+      ,.v_i(mem_cmd_v_o & mem_cmd_last_o)
+      ,.ready_i(mem_cmd_ready_and_i)
+      // memory responses return credits - from memory response pipe
+      ,.yumi_i(mem_credit_return)
+      ,.count_o(mem_credit_count_lo)
+      );
+
   // Control
   logic ctrl_lce_cmd_header_v_li, ctrl_lce_cmd_header_ready_and_lo, ctrl_lce_cmd_has_data_li;
   logic ctrl_lce_cmd_data_v_li, ctrl_lce_cmd_data_ready_and_lo, ctrl_lce_cmd_last_li;
@@ -108,7 +127,6 @@ module bp_cce_hybrid
   logic [lce_data_width_p-1:0] ctrl_lce_cmd_data_li;
 
   logic drain_then_stall, req_empty, uc_pipe_empty, coh_pipe_empty, sync_yumi;
-  logic mem_credits_full, mem_credits_empty;
   logic inv_yumi, coh_yumi, wb_yumi;
   bp_cce_mode_e cce_mode;
   logic [cce_id_width_p-1:0] cce_id;
@@ -246,6 +264,11 @@ module bp_cce_hybrid
   logic lce_resp_pending_up, lce_resp_pending_down, lce_resp_pending_clear;
   logic [paddr_width_p-1:0] lce_resp_pending_w_addr;
 
+  logic lce_cmd_header_v_li, lce_cmd_header_ready_and_lo, lce_cmd_has_data_li;
+  logic lce_cmd_data_v_li, lce_cmd_data_ready_and_lo, lce_cmd_last_li;
+  bp_bedrock_lce_cmd_msg_header_s  lce_cmd_header_li;
+  logic [lce_data_width_p-1:0] lce_cmd_data_li;
+
   bp_cce_hybrid_coh_pipe
     #(.bp_params_p(bp_params_p)
       ,.lce_data_width_p(lce_data_width_p)
@@ -270,17 +293,16 @@ module bp_cce_hybrid
       ,.lce_req_data_ready_and_o(lce_req_data_ready_and_lo)
       ,.lce_req_last_i(lce_req_last_li)
       // LCE Command to arbiter
-      ,.lce_cmd_header_o(ctrl_lce_cmd_header_li)
-      ,.lce_cmd_header_v_o(ctrl_lce_cmd_header_v_li)
-      ,.lce_cmd_header_ready_and_i(ctrl_lce_cmd_header_ready_and_lo)
-      ,.lce_cmd_has_data_o(ctrl_lce_cmd_has_data_li)
-      ,.lce_cmd_data_o(ctrl_lce_cmd_data_li)
-      ,.lce_cmd_data_v_o(ctrl_lce_cmd_data_v_li)
-      ,.lce_cmd_data_ready_and_i(ctrl_lce_cmd_data_ready_and_lo)
-      ,.lce_cmd_last_o(ctrl_lce_cmd_last_li)
+      ,.lce_cmd_header_o(lce_cmd_header_li)
+      ,.lce_cmd_header_v_o(lce_cmd_header_v_li)
+      ,.lce_cmd_header_ready_and_i(lce_cmd_header_ready_and_lo)
+      ,.lce_cmd_has_data_o(lce_cmd_has_data_li)
+      ,.lce_cmd_data_o(lce_cmd_data_li)
+      ,.lce_cmd_data_v_o(lce_cmd_data_v_li)
+      ,.lce_cmd_data_ready_and_i(lce_cmd_data_ready_and_lo)
+      ,.lce_cmd_last_o(lce_cmd_last_li)
       // LCE response signals
       ,.inv_yumi_i(inv_yumi)
-      ,.coh_yumi_i(coh_yumi)
       ,.wb_yumi_i(wb_yumi)
       // memory command output to arbiter
       ,.mem_cmd_header_o(mem_cmd_header_lo)
@@ -326,7 +348,11 @@ module bp_cce_hybrid
   // Memory Response pipe
   bp_bedrock_cce_mem_msg_header_s mem_resp_header_li;
   assign mem_resp_header_li = mem_resp_header_i;
-  logic mem_credit_return;
+
+  logic mem_resp_lce_cmd_header_v_li, mem_resp_lce_cmd_header_ready_and_lo, mem_resp_lce_cmd_has_data_li;
+  logic mem_resp_lce_cmd_data_v_li, mem_resp_lce_cmd_data_ready_and_lo, mem_resp_lce_cmd_last_li;
+  bp_bedrock_lce_cmd_msg_header_s  mem_resp_lce_cmd_header_li;
+  logic [lce_data_width_p-1:0] mem_resp_lce_cmd_data_li;
 
   bp_cce_hybrid_mem_resp_pipe
     #(.bp_params_p(bp_params_p)
@@ -353,19 +379,19 @@ module bp_cce_hybrid
       ,.pending_w_v_o(mem_resp_pending_w_v)
       ,.pending_w_yumi_i(mem_resp_pending_w_yumi)
       ,.pending_w_addr_o(mem_resp_pending_w_addr)
-      ,.pending_w_addr_bypass_hash_o(mem_resp_pending_w_addr_bypass)
+      ,.pending_w_addr_bypass_hash_o(mem_resp_pending_w_addr_bypass_hash)
       ,.pending_up_o(mem_resp_pending_up)
       ,.pending_down_o(mem_resp_pending_down)
       ,.pending_clear_o(mem_resp_pending_clear)
       // LCE Command to arbiter
-      ,.lce_cmd_header_o(ctrl_lce_cmd_header_li)
-      ,.lce_cmd_header_v_o(ctrl_lce_cmd_header_v_li)
-      ,.lce_cmd_header_ready_and_i(ctrl_lce_cmd_header_ready_and_lo)
-      ,.lce_cmd_has_data_o(ctrl_lce_cmd_has_data_li)
-      ,.lce_cmd_data_o(ctrl_lce_cmd_data_li)
-      ,.lce_cmd_data_v_o(ctrl_lce_cmd_data_v_li)
-      ,.lce_cmd_data_ready_and_i(ctrl_lce_cmd_data_ready_and_lo)
-      ,.lce_cmd_last_o(ctrl_lce_cmd_last_li)
+      ,.lce_cmd_header_o(mem_resp_lce_cmd_header_li)
+      ,.lce_cmd_header_v_o(mem_resp_lce_cmd_header_v_li)
+      ,.lce_cmd_header_ready_and_i(mem_resp_lce_cmd_header_ready_and_lo)
+      ,.lce_cmd_has_data_o(mem_resp_lce_cmd_has_data_li)
+      ,.lce_cmd_data_o(mem_resp_lce_cmd_data_li)
+      ,.lce_cmd_data_v_o(mem_resp_lce_cmd_data_v_li)
+      ,.lce_cmd_data_ready_and_i(mem_resp_lce_cmd_data_ready_and_lo)
+      ,.lce_cmd_last_o(mem_resp_lce_cmd_last_li)
       // Memory Response from external
       ,.mem_resp_header_i(mem_resp_header_li)
       ,.mem_resp_data_i(mem_resp_data_i)
@@ -412,7 +438,7 @@ module bp_cce_hybrid
       ,.pending_w_v_o(lce_resp_pending_w_v)
       ,.pending_w_yumi_i(lce_resp_pending_w_yumi)
       ,.pending_w_addr_o(lce_resp_pending_w_addr)
-      ,.pending_w_addr_bypass_hash_o(lce_resp_pending_w_addr_bypass)
+      ,.pending_w_addr_bypass_hash_o(lce_resp_pending_w_addr_bypass_hash)
       ,.pending_up_o(lce_resp_pending_up)
       ,.pending_down_o(lce_resp_pending_down)
       ,.pending_clear_o(lce_resp_pending_clear)
@@ -423,25 +449,164 @@ module bp_cce_hybrid
       ,.wb_yumi_o(wb_yumi)
       );
 
-  // TODO: LCE Command arbitration
+  // LCE Command xbar
+  bp_bedrock_lce_cmd_msg_header_s [2:0] lce_cmd_xbar_header_li;
+  logic [2:0]                           lce_cmd_xbar_header_v_li;
+  logic [2:0]                           lce_cmd_xbar_header_yumi_lo;
+  logic [2:0]                           lce_cmd_xbar_has_data_li;
+  logic [2:0][lce_data_width_p-1:0]     lce_cmd_xbar_data_li;
+  logic [2:0]                           lce_cmd_xbar_data_v_li;
+  logic [2:0]                           lce_cmd_xbar_data_yumi_lo;
+  logic [2:0]                           lce_cmd_xbar_last_li;
 
-  // TODO: Memory Command arbitration
-  // TODO: memory command pending bits write
+  assign lce_cmd_xbar_header_li[0]     = lce_cmd_header_li;
+  assign lce_cmd_xbar_header_v_li[0]   = lce_cmd_header_v_li;
+  assign lce_cmd_xbar_has_data_li[0]   = lce_cmd_has_data_li;
+  assign lce_cmd_xbar_data_li[0]       = lce_cmd_data_li;
+  assign lce_cmd_xbar_data_v_li[0]     = lce_cmd_data_v_li;
+  assign lce_cmd_xbar_last_li[0]       = lce_cmd_last_li;
+  assign lce_cmd_header_ready_and_lo   = lce_cmd_xbar_header_yumi_lo[0];
+  assign lce_cmd_data_ready_and_lo     = lce_cmd_xbar_data_yumi_lo[0];
 
-  logic [`BSG_WIDTH(mem_noc_max_credits_p)-1:0] mem_credit_count_lo;
-  assign mem_credits_empty = (mem_credit_count_lo == mem_noc_max_credits_p);
-  assign mem_credits_full = (mem_credit_count_lo == 0);
-  bsg_flow_counter
-    #(.els_p(mem_noc_max_credits_p))
-    mem_credit_counter
+  assign lce_cmd_xbar_header_li[1]     = mem_resp_lce_cmd_header_li;
+  assign lce_cmd_xbar_header_v_li[1]   = mem_resp_lce_cmd_header_v_li;
+  assign lce_cmd_xbar_has_data_li[1]   = mem_resp_lce_cmd_has_data_li;
+  assign lce_cmd_xbar_data_li[1]       = mem_resp_lce_cmd_data_li;
+  assign lce_cmd_xbar_data_v_li[1]     = mem_resp_lce_cmd_data_v_li;
+  assign lce_cmd_xbar_last_li[1]       = mem_resp_lce_cmd_last_li;
+  assign mem_resp_lce_cmd_header_ready_and_lo   = lce_cmd_xbar_header_yumi_lo[1];
+  assign mem_resp_lce_cmd_data_ready_and_lo     = lce_cmd_xbar_data_yumi_lo[1];
+
+  assign lce_cmd_xbar_header_li[2]     = ctrl_lce_cmd_header_li;
+  assign lce_cmd_xbar_header_v_li[2]   = ctrl_lce_cmd_header_v_li;
+  assign lce_cmd_xbar_has_data_li[2]   = ctrl_lce_cmd_has_data_li;
+  assign lce_cmd_xbar_data_li[2]       = ctrl_lce_cmd_data_li;
+  assign lce_cmd_xbar_data_v_li[2]     = ctrl_lce_cmd_data_v_li;
+  assign lce_cmd_xbar_last_li[2]       = ctrl_lce_cmd_last_li;
+  assign ctrl_lce_cmd_header_ready_and_lo   = lce_cmd_xbar_header_yumi_lo[2];
+  assign ctrl_lce_cmd_data_ready_and_lo     = lce_cmd_xbar_data_yumi_lo[2];
+
+  bp_me_xbar_burst
+    #(.bp_params_p(bp_params_p)
+      ,.data_width_p(lce_data_width_p)
+      ,.payload_width_p(lce_cmd_payload_width_lp)
+      ,.num_source_p(3)
+      ,.num_sink_p(1)
+      )
+    lce_cmd_xbar
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
-      // memory commands consume credits - once on last beat per message
-      ,.v_i(mem_cmd_v_o & mem_cmd_last_o)
-      ,.ready_i(mem_cmd_ready_and_i)
-      // memory responses return credits - from memory response pipe
-      ,.yumi_i(mem_credit_return)
-      ,.count_o(mem_credit_count_lo)
+      // source
+      // TODO: handshake mismatch (yumi consumer to r&v producer - works fine)
+      ,.msg_header_i(lce_cmd_xbar_header_li)
+      ,.msg_header_v_i(lce_cmd_xbar_header_v_li)
+      ,.msg_header_yumi_o(lce_cmd_xbar_header_yumi_lo)
+      ,.msg_has_data_i(lce_cmd_xbar_has_data_li)
+      ,.msg_data_i(lce_cmd_xbar_data_li)
+      ,.msg_data_v_i(lce_cmd_xbar_data_v_li)
+      ,.msg_data_yumi_o(lce_cmd_xbar_data_yumi_lo)
+      ,.msg_last_i(lce_cmd_xbar_last_li)
+      ,.msg_dst_i('0)
+      // sink
+      ,.msg_header_o(lce_cmd_header_o)
+      ,.msg_header_v_o(lce_cmd_header_v_o)
+      ,.msg_header_ready_and_i(lce_cmd_header_ready_and_i)
+      ,.msg_has_data_o(lce_cmd_has_data_o)
+      ,.msg_data_o(lce_cmd_data_o)
+      ,.msg_data_v_o(lce_cmd_data_v_o)
+      ,.msg_data_ready_and_i(lce_cmd_data_ready_and_i)
+      ,.msg_last_o(lce_cmd_last_o)
       );
+
+  // memory command pending bit write buffer
+  logic mem_cmd_pending_w_v_li, mem_cmd_pending_w_ready_then_lo;
+  logic [paddr_width_p-1:0] mem_cmd_pending_w_addr_li;
+  bsg_fifo_1r1w_small
+    #(.width_p(paddr_width_p)
+      ,.els_p(mem_cmd_pending_wbuf_els_p)
+      ,.ready_THEN_valid_p(1)
+      )
+    mem_cmd_pending_wbuf
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      // input
+      ,.v_i(mem_cmd_pending_w_v_li)
+      ,.ready_o(mem_cmd_pending_w_ready_then_lo)
+      ,.data_i(mem_cmd_pending_w_addr_li)
+      // output
+      ,.v_o(mem_cmd_pending_w_v)
+      ,.yumi_i(mem_cmd_pending_w_yumi)
+      ,.data_o(mem_cmd_pending_w_addr)
+      );
+  assign mem_cmd_pending_w_addr_bypass_hash = 1'b0;
+  assign mem_cmd_pending_up = 1'b1;
+  assign mem_cmd_pending_down = 1'b0;
+  assign mem_cmd_pending_clear = 1'b0;
+
+  // memory command xbar
+  bp_bedrock_cce_mem_msg_header_s [2:0] mem_cmd_xbar_header_li;
+  logic [2:0][mem_data_width_p-1:0]     mem_cmd_xbar_data_li;
+  logic [2:0]                           mem_cmd_xbar_v_li;
+  logic [2:0]                           mem_cmd_xbar_ready_and_lo;
+  logic [2:0]                           mem_cmd_xbar_last_li;
+
+  assign mem_cmd_xbar_header_li[0]     = mem_cmd_header_lo;
+  assign mem_cmd_xbar_data_li[0]       = mem_cmd_data_lo;
+  assign mem_cmd_xbar_v_li[0]          = mem_cmd_v_lo;
+  assign mem_cmd_xbar_last_li[0]       = mem_cmd_last_lo;
+  assign mem_cmd_ready_and_li          = mem_cmd_xbar_ready_and_lo[0];
+
+  assign mem_cmd_xbar_header_li[1]     = uc_mem_cmd_header_lo;
+  assign mem_cmd_xbar_data_li[1]       = uc_mem_cmd_data_lo;
+  assign mem_cmd_xbar_v_li[1]          = uc_mem_cmd_v_lo;
+  assign mem_cmd_xbar_last_li[1]       = uc_mem_cmd_last_lo;
+  assign uc_mem_cmd_ready_and_li       = mem_cmd_xbar_ready_and_lo[1];
+
+  assign mem_cmd_xbar_header_li[2]     = lce_resp_mem_cmd_header_lo;
+  assign mem_cmd_xbar_data_li[2]       = lce_resp_mem_cmd_data_lo;
+  assign mem_cmd_xbar_v_li[2]          = lce_resp_mem_cmd_v_lo;
+  assign mem_cmd_xbar_last_li[2]       = lce_resp_mem_cmd_last_lo;
+  assign lce_resp_mem_cmd_ready_and_li = mem_cmd_xbar_ready_and_lo[2];
+
+  bp_bedrock_cce_mem_msg_header_s mem_cmd_xbar_header_lo;
+  assign mem_cmd_header_o = mem_cmd_xbar_header_lo;
+  assign mem_cmd_pending_w_addr_li = mem_cmd_xbar_header_lo.addr;
+
+  // gate handshake on pending write buffer ready
+  // can only send last beat when write buffer is available
+  logic xbar_mem_cmd_v_lo;
+  assign mem_cmd_v_o = mem_cmd_last_o
+                       ? (xbar_mem_cmd_v_lo & mem_cmd_pending_w_ready_then_lo)
+                       : xbar_mem_cmd_v_lo;
+  logic xbar_mem_cmd_ready_and_li;
+  assign xbar_mem_cmd_ready_and_li = mem_cmd_last_o
+                                     ? mem_cmd_ready_and_i & mem_cmd_pending_w_ready_then_lo
+                                     : mem_cmd_ready_and_i;
+
+  assign mem_cmd_pending_w_v_li = xbar_mem_cmd_v_lo & mem_cmd_last_o & mem_cmd_pending_w_ready_then_lo;
+
+  bp_me_xbar_stream_buffered
+    #(.bp_params_p(bp_params_p)
+      ,.data_width_p(mem_data_width_p)
+      ,.payload_width_p(cce_mem_payload_width_lp)
+      ,.num_source_p(3)
+      ,.num_sink_p(1)
+      )
+    mem_cmd_xbar
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.msg_header_i(mem_cmd_xbar_header_li)
+      ,.msg_data_i(mem_cmd_xbar_data_li)
+      ,.msg_v_i(mem_cmd_xbar_v_li)
+      ,.msg_ready_and_o(mem_cmd_xbar_ready_and_lo)
+      ,.msg_last_i(mem_cmd_xbar_last_li)
+      ,.msg_dst_i('0)
+      ,.msg_header_o(mem_cmd_xbar_header_lo)
+      ,.msg_data_o(mem_cmd_data_o)
+      ,.msg_v_o(xbar_mem_cmd_v_lo)
+      ,.msg_ready_and_i(xbar_mem_cmd_ready_and_li)
+      ,.msg_last_o(mem_cmd_last_o)
+      );
+
 
 endmodule
