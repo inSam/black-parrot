@@ -31,7 +31,8 @@
 
   `define bp_cce_mshr_width(lce_id_width_mp, lce_assoc_mp, paddr_width_mp)          \
     ((2*lce_id_width_mp)+(3*`BSG_SAFE_CLOG2(lce_assoc_mp))+(2*paddr_width_mp)       \
-     +(3*$bits(bp_coh_states_e))+$bits(bp_cce_inst_flag_onehot_e)+$bits(bp_bedrock_msg_size_e))
+     +(3*$bits(bp_coh_states_e))+$bits(bp_cce_inst_flag_onehot_e)+$bits(bp_bedrock_msg_size_e) \
+     +$bits(bp_bedrock_msg_u)+$bits(bp_bedrock_wr_subop_e))
 
   `define bp_cce_dir_entry_width(tag_width_mp) \
     ($bits(bp_coh_states_e)+tag_width_mp)
