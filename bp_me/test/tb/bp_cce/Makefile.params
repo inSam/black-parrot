@@ -21,6 +21,8 @@ export LCE_MODE_P ?= 0
 # 6 = AXE test
 export ME_TEST_P ?= 0
 
+export MEM_BLOCKS_P ?= 0
+
 COH_PROTO   ?= mesi
 CCE_MEM      = $(COH_PROTO).mem
 

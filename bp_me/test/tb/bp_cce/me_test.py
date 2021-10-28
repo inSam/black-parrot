@@ -44,12 +44,10 @@ parser.add_argument('-d', dest='dword_size', type=int, default=64,
 
 # The basic memory map is only DRAM is cacheable and all other memory uncacheable
 # Uncacheable accesses may be issued to DRAM, and are kept coherent by the CCE.
-parser.add_argument('--dram-offset', dest='dram_offset', type=int, default=0x80000000,
-                    help='base address of cacheable memory (DRAM)')
-parser.add_argument('--dram-high', dest='dram_high', type=int, default=0x100000000,
-                    help='DRAM upper limit (i.e., first address above DRAM)')
-parser.add_argument('--mem-size', dest='mem_size', type=int, default=2,
-                    help='Size of backing memory, given as integer multiple of $ size')
+parser.add_argument('--mem-base', dest='mem_base', type=int, default=0x80000000,
+                    help='base address of memory')
+parser.add_argument('--mem-blocks', dest='mem_blocks', type=int, default=0,
+                    help='Number of memory blocks to use, starting at the DRAM offset')
 
 
 if __name__ == '__main__':
@@ -85,10 +83,9 @@ if __name__ == '__main__':
   assert (cache_sets > 1), '[ME TraceGen]: direct mapped cache not supported'
 
   # Memory parameters
-  mem_bytes = cache_size * args.mem_size
-  mem_blocks = cache_blocks * args.mem_size
-  mem_base = args.dram_offset
-  mem_high = mem_base + mem_bytes
+  mem_blocks = cache_blocks*2 if (args.mem_blocks == 0) else args.mem_blocks
+  mem_bytes = block_size * mem_blocks
+  mem_base = args.mem_base
 
   # bits in address
   s = int(math.log(cache_sets, 2))
@@ -125,7 +122,7 @@ if __name__ == '__main__':
                                    , mem_base=mem_base
                                    , mem_bytes=mem_bytes
                                    , mem_block_size=block_size
-                                   , mem_size=args.mem_size
+                                   , mem_blocks=mem_blocks
                                    , assoc=cache_assoc
                                    , sets=cache_sets
                                    , seed=args.seed
