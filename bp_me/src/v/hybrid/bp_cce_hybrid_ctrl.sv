@@ -136,21 +136,35 @@ module bp_cce_hybrid_ctrl
       ,.detect_o(detect_uncached_transition)
       );
 
-  // Sync cmd/ack counter
-  // counter increments on command header send
-  wire [`BSG_WIDTH(1)-1:0] cnt_inc = lce_cmd_header_v_o & lce_cmd_header_ready_and_i;
-  logic [`BSG_WIDTH(num_lce_p+1)-1:0] cnt;
-  bsg_counter_up_down
-    #(.max_val_p(num_lce_p+1)
+  // Sync cmd/ack counters
+  localparam counter_max_lp = num_lce_p;
+  localparam counter_ptr_width_lp = `BSG_SAFE_CLOG2(counter_max_lp+1);
+  // cmd counter increments on command header send
+  logic [counter_ptr_width_lp-1:0] cmd_cnt;
+  bsg_counter_clear_up
+    #(.max_val_p(counter_max_lp)
       ,.init_val_p(0)
-      ,.max_step_p(1)
       )
-    counter
+    cmd_counter
     (.clk_i(clk_i)
      ,.reset_i(reset_i)
-     ,.up_i(cnt_inc)
-     ,.down_i(sync_yumi_i)
-     ,.count_o(cnt)
+     ,.up_i(lce_cmd_header_v_o & lce_cmd_header_ready_and_i)
+     ,.clear_i(1'b0)
+     ,.count_o(cmd_cnt)
+     );
+
+  // ack counter increments on sync ack received
+  logic [counter_ptr_width_lp-1:0] ack_cnt;
+  bsg_counter_clear_up
+    #(.max_val_p(counter_max_lp)
+      ,.init_val_p(0)
+      )
+    ack_counter
+    (.clk_i(clk_i)
+     ,.reset_i(reset_i)
+     ,.up_i(sync_yumi_i)
+     ,.clear_i(1'b0)
+     ,.count_o(ack_cnt)
      );
 
   typedef enum logic [2:0]
@@ -176,7 +190,7 @@ module bp_cce_hybrid_ctrl
     lce_cmd_header_lo = '0;
     lce_cmd_header_lo.payload.src_id = cfg_bus_cast_i.cce_id;
     lce_cmd_header_lo.msg_type.cmd = e_bedrock_cmd_sync;
-    lce_cmd_header_lo.payload.dst_id[0+:lg_num_lce_lp] = cnt[0+:lg_num_lce_lp];
+    lce_cmd_header_lo.payload.dst_id[0+:lg_num_lce_lp] = cmd_cnt[0+:lg_num_lce_lp];
     lce_cmd_header_v_o = '0;
     lce_cmd_has_data_o = '0;
     lce_cmd_data_o = '0;
@@ -211,13 +225,13 @@ module bp_cce_hybrid_ctrl
         // send command
         lce_cmd_header_v_o = 1'b1;
         // wait for remaining acks after sending last sync
-        state_n = (cnt == num_lce_p-1) & lce_cmd_header_v_o & lce_cmd_header_ready_and_i
+        state_n = (cmd_cnt == num_lce_p-1) & lce_cmd_header_v_o & lce_cmd_header_ready_and_i
                   ? e_sync_ack : e_send_sync;
       end // e_send_sync
 
       // wait for all syncs acks to return
       e_sync_ack: begin
-        if ((cnt == '0) || ((cnt == 'd1) && sync_yumi_i)) begin
+        if (ack_cnt == cmd_cnt) begin
           state_n = e_ready;
           // release the CCE pipelines for execution next cycle
           drain_then_stall_clear = 1'b1;
