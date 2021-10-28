@@ -231,13 +231,16 @@ module bp_cce_hybrid_pending
           lce_req_header_v_o = pending_header_v_lo;
           lce_req_has_data_o = pending_has_data_lo;
           pending_header_yumi_li = lce_req_header_v_o & lce_req_header_ready_and_i;
-          pending_w_v_li = pending_header_yumi_li;
-          pending_w_yumi_o = 1'b0; // block external write
-          pending_w_addr_li = pending_header_lo.addr;
-          pending_w_addr_bypass_hash_li = 1'b0;
-          pending_up_li = 1'b1;
-          pending_down_li = 1'b0;
-          pending_clear_li = 1'b0;
+          // write pending bits only if message is actually sending
+          if (pending_header_yumi_li) begin
+            pending_w_v_li = pending_header_yumi_li;
+            pending_w_addr_li = pending_header_lo.addr;
+            pending_w_addr_bypass_hash_li = 1'b0;
+            pending_up_li = 1'b1;
+            pending_down_li = 1'b0;
+            pending_clear_li = 1'b0;
+            pending_w_yumi_o = 1'b0;
+          end
           state_n = (lce_req_header_v_o & lce_req_header_ready_and_i & lce_req_has_data_o)
                     ? e_data_to_out
                     : state_r;
@@ -249,13 +252,16 @@ module bp_cce_hybrid_pending
           lce_req_header_v_o = lce_req_header_v_i;
           lce_req_has_data_o = lce_req_has_data_i;
           lce_req_header_ready_and_o = lce_req_header_ready_and_i;
-          pending_w_v_li = lce_req_header_v_o & lce_req_header_ready_and_o;
-          pending_w_yumi_o = 1'b0; // block external write
-          pending_w_addr_li = lce_req_header_li.addr;
-          pending_w_addr_bypass_hash_li = 1'b0;
-          pending_up_li = 1'b1;
-          pending_down_li = 1'b0;
-          pending_clear_li = 1'b0;
+          // write pending bits only if message is actually sending
+          if (lce_req_header_ready_and_i) begin
+            pending_w_v_li = lce_req_header_v_o & lce_req_header_ready_and_o;
+            pending_w_addr_li = lce_req_header_li.addr;
+            pending_w_addr_bypass_hash_li = 1'b0;
+            pending_up_li = 1'b1;
+            pending_down_li = 1'b0;
+            pending_clear_li = 1'b0;
+            pending_w_yumi_o = 1'b0;
+          end
           state_n = (lce_req_header_v_o & lce_req_header_ready_and_i & lce_req_has_data_o)
                     ? e_data_to_out
                     : state_r;

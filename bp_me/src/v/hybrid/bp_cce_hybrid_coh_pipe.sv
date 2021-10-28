@@ -1093,9 +1093,9 @@ module bp_cce_hybrid_coh_pipe
                                ? e_COH_F
                                : e_COH_I;
 
-        // only transfer from owner in E requires a writeback
+        // only transfer from owner in E for read miss requires a writeback
         state_n = (lce_cmd_header_v_o & lce_cmd_header_ready_and_i)
-                  ? mshr_r.flags[e_opd_cef]
+                  ? mshr_r.flags[e_opd_cef] & ~mshr_r.flags[e_opd_rqf]
                     ? e_transfer_wb_resp
                     : e_resolve_speculation
                   : state_r;
