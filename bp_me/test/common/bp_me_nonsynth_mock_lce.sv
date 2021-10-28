@@ -1158,9 +1158,9 @@ module bp_me_nonsynth_mock_lce
         end else begin
           if (mshr_r.miss) begin
             lce_state_n = TR_CMD_ST_MISS;
-          end else if (~mshr_r.miss && ((tag_hit_state_r == e_COH_M) || (tag_hit_state_r == e_COH_E))) begin
+          end else if (~mshr_r.miss && (tag_hit_state_r inside {e_COH_M, e_COH_E})) begin
             lce_state_n = TR_CMD_ST_HIT;
-          end else if (~mshr_r.miss && (tag_hit_state_r == e_COH_S)) begin
+          end else if (~mshr_r.miss && (tag_hit_state_r inside {e_COH_S, e_COH_F, e_COH_O})) begin
             // upgrade counts as a miss - update the mshr
             mshr_n.miss = 1'b1;
             mshr_n.upgrade = 1'b1;
