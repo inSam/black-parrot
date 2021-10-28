@@ -483,7 +483,6 @@ module bp_cce_hybrid_coh_pipe
     ,e_uc_coherent_cmd
     ,e_uc_coherent_resp
     ,e_uc_coherent_mem_cmd
-    ,e_uc_coherent_write_pending
     ,e_upgrade_stw_cmd
     ,e_transfer
     ,e_transfer_wb_resp
@@ -1016,27 +1015,21 @@ module bp_cce_hybrid_coh_pipe
         mem_cmd_base_header_lo.payload.uncached = 1'b1;
         mem_cmd_data_lo = lce_req_data_li;
 
-        // try to write the pending bit on last beat
-        // TODO: this could be a long path? pending_w_yumi depends on mem_cmd handshake
-        pending_w_v = mem_cmd_stream_done_li;
-        pending_w_addr = mshr_r.paddr;
-        pending_up = 1'b1;
+        // Do NOT write pending bit for this memory command.
+        // Uncached requests to coherent memory write the pending bit when they are processed
+        // by the pending module. This write is associated with the required memory command
+        // that every uncached memory access performs. The memory response will decrement
+        // the pending bit when it returns, thereby closing the request and allowing the next
+        // request to proceed (uncached requests do not have an ack back to the CCE from the LCE
+        // so the best we can do for ordering is ensure the data is on its way to the LCE before
+        // moving on).
 
         // if last beat is acked, check if pending write happened
         state_n = mem_cmd_stream_done_li
-                  ? pending_w_yumi
-                    ? e_ready
-                    : e_uc_coherent_write_pending
+                  ? e_ready
                   : e_uc_coherent_mem_cmd;
 
       end // e_uc_coherent_mem_cmd
-
-      e_uc_coherent_write_pending: begin
-        pending_w_v = 1'b1;
-        pending_w_addr = mshr_r.paddr;
-        pending_up = 1'b1;
-        state_n = pending_w_yumi ? e_ready : state_r;
-      end
 
       e_transfer: begin
         // Transfer required:

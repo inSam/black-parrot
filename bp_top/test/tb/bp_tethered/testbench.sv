@@ -620,7 +620,7 @@ module testbench
                  ,.mem_cmd_header_i(mem_cmd_base_header_lo)
                  );
 
-          end else begin
+          end else if (cce_type_p == e_cce_fsm) begin
             bind bp_cce_fsm
               bp_me_nonsynth_cce_perf
                 #(.bp_params_p(bp_params_p))
@@ -641,6 +641,23 @@ module testbench
                  ,.mem_cmd_send_i(mem_cmd_stream_new_li)
                  ,.mem_cmd_header_i(mem_cmd_base_header_lo)
                  );
+          end else if (cce_type_p == e_cce_hybrid) begin
+            /*
+            bind bp_cce_hybrid
+              bp_me_nonsynth_cce_pending_tracer
+                #(.num_way_groups_p(coh_pipe.num_way_groups_lp)
+                  ,.width_p(3)
+                  ,.cce_id_width_p(cce_id_width_p)
+                  )
+                pending_bit_tracer
+                (.clk_i(clk_i & testbench.cce_trace_en_lo)
+                 ,.reset_i(reset_i)
+                 ,.cce_id_i(cce_id)
+                 ,.w_v_i(coh_pipe.pending_bits_and_queue.pending_bits.w_v_i)
+                 ,.w_wg_i(coh_pipe.pending_bits_and_queue.pending_bits.w_wg)
+                 ,.w_val_i(coh_pipe.pending_bits_and_queue.pending_bits.pending_bits_n[w_wg])
+                 );
+            */
           end
         end
     end

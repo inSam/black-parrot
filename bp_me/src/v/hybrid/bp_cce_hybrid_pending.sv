@@ -286,9 +286,10 @@ module bp_cce_hybrid_pending
         end
         // from new request input
         else begin
-          lce_req_data_o = pending_data_lo;
-          lce_req_data_v_o = pending_data_v_lo;
-          lce_req_last_o = pending_last_lo;
+          lce_req_data_o = lce_req_data_i;
+          lce_req_data_v_o = lce_req_data_v_i;
+          lce_req_last_o = lce_req_last_i;
+          lce_req_data_ready_and_o = lce_req_data_ready_and_i;
         end
         // back to ready after last beat sends
         state_n = (lce_req_data_v_o & lce_req_data_ready_and_i & lce_req_last_o)

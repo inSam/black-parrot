@@ -165,13 +165,6 @@ module bp_cce_hybrid_pending_bits
         $error("%12t |: pending bit write overflow detected wg[%d]", $time, w_wg);
       assert(!(w_v_i & down_i & (pending_bits_r[w_wg] == '0))) else
         $error("%12t |: pending bit write underflow detected wg[%d]", $time, w_wg);
-
-      // TODO: pending bits tracer module or debug_p param to enable tracing
-      /*
-      if (w_v_i) begin
-        $display("%12t |: write[%d] := %d", $time, w_wg, pending_bits_n[w_wg]);
-      end
-      */
     end
   end
   //synopsys translate_on
