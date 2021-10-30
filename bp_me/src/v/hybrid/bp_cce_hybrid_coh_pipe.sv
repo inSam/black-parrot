@@ -148,6 +148,7 @@ module bp_cce_hybrid_coh_pipe
     pending_bits_and_queue
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
+      ,.cce_id_i(cce_id_i)
       // request from input port
       // guaranteed to target cacheable memory space (cached or uncached)
       ,.lce_req_header_i(lce_req_header_i)

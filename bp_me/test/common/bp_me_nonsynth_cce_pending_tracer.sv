@@ -37,7 +37,7 @@ module bp_me_nonsynth_cce_pending_tracer
   always_ff @(negedge clk_i) begin
     if (~reset_i) begin
       if (w_v_i) begin
-        $display("%12t |: write[%d] := %d", $time, w_wg_i, w_val_i);
+        $fdisplay(file, "%12t |: write[%d] := %d", $time, w_wg_i, w_val_i);
       end
     end
   end

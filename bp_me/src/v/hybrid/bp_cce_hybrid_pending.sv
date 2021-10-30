@@ -40,6 +40,7 @@ module bp_cce_hybrid_pending
   )
   (input                                            clk_i
    , input                                          reset_i
+   , input [cce_id_width_p-1:0]                     cce_id_i
 
    // LCE Request
    // BedRock Burst protocol: ready&valid
@@ -139,10 +140,12 @@ module bp_cce_hybrid_pending
       ,.num_cce_p(num_cce_p)
       ,.paddr_width_p(paddr_width_p)
       ,.addr_offset_p(lg_block_size_in_bytes_lp)
+      ,.cce_id_width_p(cce_id_width_p)
      )
     pending_bits
      (.clk_i(clk_i)
       ,.reset_i(reset_i)
+      ,.cce_id_i(cce_id_i)
       // write port - from internal or external
       ,.w_v_i(pending_w_v_li)
       ,.w_addr_i(pending_w_addr_li)

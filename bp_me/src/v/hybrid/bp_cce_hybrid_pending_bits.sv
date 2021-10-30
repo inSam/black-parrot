@@ -31,6 +31,7 @@ module bp_cce_hybrid_pending_bits
     , parameter `BSG_INV_PARAM(num_cce_p)
     , parameter `BSG_INV_PARAM(paddr_width_p)
     , parameter `BSG_INV_PARAM(addr_offset_p)
+    , parameter `BSG_INV_PARAM(cce_id_width_p)
 
     // Default parameters
     // pending bit counter width
@@ -45,6 +46,7 @@ module bp_cce_hybrid_pending_bits
   )
   (input                                                          clk_i
    , input                                                        reset_i
+   , input [cce_id_width_p-1:0]                                   cce_id_i
 
    , input                                                        w_v_i
    , input [paddr_width_p-1:0]                                    w_addr_i
