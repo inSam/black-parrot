@@ -139,11 +139,8 @@ module bp_lce_cmd
 
   bp_bedrock_lce_cmd_msg_s lce_cmd, lce_cmd_out;
   bp_bedrock_lce_resp_msg_s lce_resp;
-  bp_bedrock_lce_cmd_payload_s lce_cmd_payload, lce_cmd_out_payload;
-  bp_bedrock_lce_resp_payload_s lce_resp_payload;
 
   assign lce_cmd = lce_cmd_i;
-  assign lce_cmd_payload = lce_cmd.header.payload;
   assign lce_resp_o = lce_resp;
   assign lce_cmd_o = lce_cmd_out;
 
@@ -227,7 +224,7 @@ module bp_lce_cmd
 
   assign lce_cmd_addr_index = lce_cmd.header.addr[lg_block_size_in_bytes_lp+:lg_sets_lp];
   assign lce_cmd_addr_tag = lce_cmd.header.addr[(paddr_width_p-1) -: ptag_width_p];
-  assign lce_cmd_way_id = lce_cmd_payload.way_id[0+:lg_assoc_lp];
+  assign lce_cmd_way_id = lce_cmd.header.payload.way_id[0+:lg_assoc_lp];
 
   // LCE Command module is ready after it clears the cache's tag and stat memories
   assign ready_o = (state_r != e_reset) && (state_r != e_clear);
@@ -261,11 +258,9 @@ module bp_lce_cmd
     lce_cmd_yumi_o = 1'b0;
 
     lce_resp = '0;
-    lce_resp_payload = '0;
     lce_resp_v_o = 1'b0;
 
     lce_cmd_out = '0;
-    lce_cmd_out_payload = '0;
     lce_cmd_v_o = 1'b0;
 
     // LCE-Cache Interface signals
@@ -321,9 +316,8 @@ module bp_lce_cmd
 
             // Sync
             e_bedrock_cmd_sync: begin
-              lce_resp_payload.dst_id = lce_cmd_payload.src_id;
-              lce_resp_payload.src_id = lce_id_i;
-              lce_resp.header.payload = lce_resp_payload;
+              lce_resp.header.payload.dst_id = lce_cmd.header.payload.src_id;
+              lce_resp.header.payload.src_id = lce_id_i;
               lce_resp.header.msg_type.resp = e_bedrock_resp_sync_ack;
               lce_resp_v_o = lce_resp_ready_then_i;
               lce_cmd_yumi_o = lce_resp_v_o;
@@ -363,9 +357,8 @@ module bp_lce_cmd
               lce_resp_v_o = tag_mem_pkt_yumi_i & lce_resp_ready_then_i;
               lce_resp.header.addr = lce_cmd.header.addr;
               lce_resp.header.msg_type.resp = e_bedrock_resp_inv_ack;
-              lce_resp_payload.src_id = lce_id_i;
-              lce_resp_payload.dst_id = lce_cmd_payload.src_id;
-              lce_resp.header.payload = lce_resp_payload;
+              lce_resp.header.payload.src_id = lce_id_i;
+              lce_resp.header.payload.dst_id = lce_cmd.header.payload.src_id;
 
               lce_cmd_yumi_o = lce_resp_v_o;
 
@@ -376,7 +369,7 @@ module bp_lce_cmd
             e_bedrock_cmd_st: begin
               tag_mem_pkt.index = lce_cmd_addr_index;
               tag_mem_pkt.way_id = lce_cmd_way_id;
-              tag_mem_pkt.state = lce_cmd_payload.state;
+              tag_mem_pkt.state = lce_cmd.header.payload.state;
               tag_mem_pkt.tag = '0;
               tag_mem_pkt.opcode = e_cache_tag_mem_set_state;
               tag_mem_pkt_v_o = lce_cmd_v_i;
@@ -397,7 +390,7 @@ module bp_lce_cmd
 
               tag_mem_pkt.index = lce_cmd_addr_index;
               tag_mem_pkt.way_id = lce_cmd_way_id;
-              tag_mem_pkt.state = lce_cmd_payload.state;
+              tag_mem_pkt.state = lce_cmd.header.payload.state;
               tag_mem_pkt.tag = lce_cmd_addr_tag;
               tag_mem_pkt.opcode = e_cache_tag_mem_set_tag;
               tag_mem_pkt_v_o = lce_cmd_v_i;
@@ -419,7 +412,7 @@ module bp_lce_cmd
             e_bedrock_cmd_st_wakeup: begin
               tag_mem_pkt.index = lce_cmd_addr_index;
               tag_mem_pkt.way_id = lce_cmd_way_id;
-              tag_mem_pkt.state = lce_cmd_payload.state;
+              tag_mem_pkt.state = lce_cmd.header.payload.state;
               tag_mem_pkt.tag = lce_cmd_addr_tag;
               tag_mem_pkt.opcode = e_cache_tag_mem_set_state;
               tag_mem_pkt_v_o = lce_cmd_v_i;
@@ -450,7 +443,7 @@ module bp_lce_cmd
               // update state
               tag_mem_pkt.index = lce_cmd_addr_index;
               tag_mem_pkt.way_id = lce_cmd_way_id;
-              tag_mem_pkt.state = lce_cmd_payload.state;
+              tag_mem_pkt.state = lce_cmd.header.payload.state;
               tag_mem_pkt.tag = lce_cmd_addr_tag;
               tag_mem_pkt.opcode = e_cache_tag_mem_set_state;
               tag_mem_pkt_v_o = lce_cmd_v_i;
@@ -490,7 +483,7 @@ module bp_lce_cmd
               // update state
               tag_mem_pkt.index = lce_cmd_addr_index;
               tag_mem_pkt.way_id = lce_cmd_way_id;
-              tag_mem_pkt.state = lce_cmd_payload.state;
+              tag_mem_pkt.state = lce_cmd.header.payload.state;
               tag_mem_pkt.tag = lce_cmd_addr_tag;
               tag_mem_pkt.opcode = e_cache_tag_mem_set_state;
               tag_mem_pkt_v_o = lce_cmd_v_i;
@@ -509,7 +502,7 @@ module bp_lce_cmd
               stat_mem_pkt.way_id = lce_cmd_way_id;
               stat_mem_pkt.opcode = e_cache_stat_mem_clear_dirty;
               stat_mem_pkt_v_o = lce_cmd_v_i & (lce_cmd.header.msg_type.cmd == e_bedrock_cmd_st_tr)
-                                & (lce_cmd_payload.state == e_COH_I);
+                                & (lce_cmd.header.payload.state == e_COH_I);
 
               // for both of these commands, do the transfer next
               state_n = data_mem_pkt_yumi_i & tag_mem_pkt_yumi_i & (~stat_mem_pkt_v_o | stat_mem_pkt_yumi_i)
@@ -554,9 +547,8 @@ module bp_lce_cmd
       e_coh_ack: begin
         lce_resp.header.addr = lce_cmd.header.addr;
         lce_resp.header.msg_type.resp = e_bedrock_resp_coh_ack;
-        lce_resp_payload.src_id = lce_id_i;
-        lce_resp_payload.dst_id = lce_cmd_payload.src_id;
-        lce_resp.header.payload = lce_resp_payload;
+        lce_resp.header.payload.src_id = lce_id_i;
+        lce_resp.header.payload.dst_id = lce_cmd.header.payload.src_id;
         lce_resp_v_o = lce_cmd_v_i & lce_resp_ready_then_i;
 
         lce_cmd_yumi_o = lce_resp_v_o;
@@ -578,13 +570,12 @@ module bp_lce_cmd
         lce_cmd_out.header.addr = lce_cmd.header.addr;
         lce_cmd_out.header.size = cmd_block_size_lp;
         // form the outbound message
-        lce_cmd_out_payload.dst_id = lce_cmd_payload.target;
+        lce_cmd_out.header.payload.dst_id = lce_cmd.header.payload.target;
         // set src to be the CCE that sent the transfer command so the destination LCE knows
         // which CCE it must send its coherence ack to when the data command arrives
-        lce_cmd_out_payload.src_id = lce_cmd_payload.src_id;
-        lce_cmd_out_payload.way_id = lce_cmd_payload.target_way_id;
-        lce_cmd_out_payload.state = lce_cmd_payload.target_state;
-        lce_cmd_out.header.payload = lce_cmd_out_payload;
+        lce_cmd_out.header.payload.src_id = lce_cmd.header.payload.src_id;
+        lce_cmd_out.header.payload.way_id = lce_cmd.header.payload.target_way_id;
+        lce_cmd_out.header.payload.state = lce_cmd.header.payload.target_state;
         lce_cmd_out.data = dirty_data_r;
 
         // handshakes
@@ -629,9 +620,8 @@ module bp_lce_cmd
         lce_resp.data = '0;
         lce_resp.header.addr = lce_cmd.header.addr;
         lce_resp.header.msg_type = e_bedrock_resp_null_wb;
-        lce_resp_payload.src_id = lce_id_i;
-        lce_resp_payload.dst_id = lce_cmd_payload.src_id;
-        lce_resp.header.payload = lce_resp_payload;
+        lce_resp.header.payload.src_id = lce_id_i;
+        lce_resp.header.payload.dst_id = lce_cmd.header.payload.src_id;
         lce_resp_v_o = lce_resp_ready_then_i & dirty_stat_v_r & ~dirty_stat_r.dirty[lce_cmd_way_id];
         // dequeue command only if sending null writeback
         lce_cmd_yumi_o = lce_resp_v_o;
@@ -673,9 +663,8 @@ module bp_lce_cmd
         lce_resp.data = dirty_data_r;
         lce_resp.header.addr = lce_cmd.header.addr;
         lce_resp.header.msg_type = e_bedrock_resp_wb;
-        lce_resp_payload.src_id = lce_id_i;
-        lce_resp_payload.dst_id = lce_cmd_payload.src_id;
-        lce_resp.header.payload = lce_resp_payload;
+        lce_resp.header.payload.src_id = lce_id_i;
+        lce_resp.header.payload.dst_id = lce_cmd.header.payload.src_id;
         lce_resp.header.size = cmd_block_size_lp;
         lce_resp_v_o = lce_resp_ready_then_i & dirty_data_v_r;
 

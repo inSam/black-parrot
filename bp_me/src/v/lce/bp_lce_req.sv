@@ -118,7 +118,6 @@ module bp_lce_req
   assign cache_req = cache_req_i;
 
   bp_bedrock_lce_req_msg_s lce_req;
-  bp_bedrock_lce_req_payload_s lce_req_payload;
   assign lce_req_o = lce_req;
 
   logic cache_req_v_r;
@@ -142,6 +141,7 @@ module bp_lce_req
       ,.data_i(cache_req_i)
       ,.data_o(cache_req_r)
       );
+  wire [paddr_width_p-1:0] req_addr = (cache_req_r.addr >> lg_block_size_in_bytes_lp) << lg_block_size_in_bytes_lp;
 
   logic cache_req_metadata_v_r;
   bsg_dff_reset_set_clear
@@ -214,9 +214,8 @@ module bp_lce_req
 
     // Request message defaults
     lce_req = '0;
-    lce_req_payload = '0;
-    lce_req_payload.dst_id = req_cce_id_lo;
-    lce_req_payload.src_id = lce_id_i;
+    lce_req.header.payload.dst_id = req_cce_id_lo;
+    lce_req.header.payload.src_id = lce_id_i;
 
     unique case (state_r)
 
@@ -237,7 +236,6 @@ module bp_lce_req
             lce_req.header.size = bp_bedrock_msg_size_e'(cache_req_r.size);
             lce_req.header.addr = cache_req_r.addr;
             lce_req.header.msg_type.req = e_bedrock_req_uc_wr;
-            lce_req.header.payload = lce_req_payload;
           end
 
         cache_req_yumi_o = cache_req_v_i
@@ -264,19 +262,18 @@ module bp_lce_req
         lce_req_v_o = lce_req_ready_then_i & cache_req_metadata_v_r;
 
         lce_req.header.size = req_block_size_lp;
-        lce_req.header.addr = cache_req_r.addr;
+        // align address to cache block size
+        lce_req.header.addr = req_addr;
         lce_req.header.msg_type = (cache_req_r.msg_type == e_miss_load)
           ? e_bedrock_req_rd_miss
           : e_bedrock_req_wr_miss;
 
-        lce_req_payload.lru_way_id = lg_lce_assoc_lp'(cache_req_metadata_r.hit_or_repl_way);
-        lce_req_payload.non_exclusive = (cache_req_r.msg_type == e_miss_load)
+        lce_req.header.payload.lru_way_id = lg_lce_assoc_lp'(cache_req_metadata_r.hit_or_repl_way);
+        lce_req.header.payload.non_exclusive = (cache_req_r.msg_type == e_miss_load)
           ? (non_excl_reads_p == 1)
             ? e_bedrock_req_non_excl
             : e_bedrock_req_excl
           : e_bedrock_req_excl;
-
-        lce_req.header.payload = lce_req_payload;
 
         state_n = lce_req_v_o
           ? e_ready
@@ -294,8 +291,6 @@ module bp_lce_req
         lce_req.header.size = bp_bedrock_msg_size_e'(cache_req_r.size);
         lce_req.header.addr = cache_req_r.addr;
         lce_req.header.msg_type = e_bedrock_req_uc_rd;
-
-        lce_req.header.payload = lce_req_payload;
 
         state_n = lce_req_v_o
           ? e_ready
