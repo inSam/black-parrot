@@ -214,6 +214,23 @@ module bp_cce_hybrid_mem_resp_pipe
       ,.data_o({pending_up_o, pending_down_o, pending_clear_o, pending_w_addr_bypass_hash_o, pending_w_addr_o})
       );
 
+  // pending write tracker
+  // set on pending bit buffer write, clear when last beat of memory message processed
+  // clear over set since write hopefully occurs same cycle as last memory message beat
+  logic pending_w_done;
+  bsg_dff_reset_set_clear
+    #(.width_p(1)
+      ,.clear_over_set_p(1)
+      )
+    pending_w_reg
+     (.clk_i(clk_i)
+      ,.reset_i(reset_i)
+      ,.set_i(pending_w_v & pending_w_ready_and)
+      ,.clear_i(mem_resp_stream_done_li)
+      ,.data_o(pending_w_done)
+      );
+
+
   // only write pending on last beat, and only for cacheable access in normal mode
   // last beat of cacheable response requires pending write port to be available
   wire not_last_beat_valid = mem_resp_v_li & ~mem_resp_stream_last_li;
@@ -221,7 +238,7 @@ module bp_cce_hybrid_mem_resp_pipe
                          & (~cacheable_resp | (cacheable_resp & pending_w_ready_and));
   wire mem_resp_valid = not_last_beat_valid | last_beat_valid;
   // write pending bit if last beat and cacheable access
-  assign pending_w_v = mem_resp_v_li & mem_resp_stream_last_li & cacheable_resp;
+  assign pending_w_v = mem_resp_v_li & mem_resp_stream_last_li & cacheable_resp & ~pending_w_done;
 
   typedef enum logic [2:0] {
     e_ready
